@@ -383,9 +383,8 @@ const [processingFilter, setProcessingFilter] = useState<string[]>([]);
   if (sortBy === "emi") list.sort((a, b) => a.emi - b.emi);
   if (sortBy === "processing")
     list.sort((a, b) => a.processingTime.localeCompare(b.processingTime));
-
-  return list;
-}, [offers, interestFilter, processingFilter, sortBy]);
+ return list;
+}, [interestFilter, processingFilter, sortBy]);
 
 
   const calcMonthlyIncomeNum = useMemo(
@@ -735,13 +734,12 @@ uploaded.other.forEach((file) => formData.append("other[]", file));
       let json: BackendResponse | null = null;
       try {
         json = raw ? (JSON.parse(raw) as BackendResponse) : null;
-      } catch (_e: unknown) {
-        // Agar JSON parse fail ho, to raw text show karo
-        throw new Error(
-          `Server sent invalid JSON. Status: ${res.status}. Body: ${raw}`
-        );
-      }
-
+      } catch (e: unknown) {
+  console.error(e);
+  throw new Error(
+    `Server sent invalid JSON. Status: ${res.status}. Body: ${raw}`
+  );
+}
       console.log("API Response:", json);
 
       if (!res.ok || !json || json.success === false) {

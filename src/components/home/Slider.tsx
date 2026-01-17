@@ -131,7 +131,8 @@ const HomeSlider = () => {
   return (
     <section className="mt-[-30px]">
       <div
-        className="relative w-full bg-[#f5fff8]  overflow-hidden flex items-center py-4 md:py-0"
+  className="relative w-full bg-gradient-to-br from-[#f5fff8] to-[#e9f7ef] overflow-hidden flex items-center py-6 md:py-10"
+
         onMouseEnter={() => setIsHover(true)}
         onMouseLeave={() => setIsHover(false)}
       >
@@ -154,7 +155,8 @@ const HomeSlider = () => {
                     {slide.eyebrow}
                   </p>
 
-                  <h2 className="text-[28px] md:text-[40px] font-extrabold leading-tight text-[#390A5D] mb-2">
+                  <h2 className="text-[30px] md:text-[44px] font-black tracking-tight leading-tight text-[#390A5D] mb-3">
+
                     {slide.titlePrefix}
                     <span className="text-[#10662A]">
                       {slide.titleHighlight}
@@ -170,7 +172,14 @@ const HomeSlider = () => {
                     <a
                       href={slide.primaryHref}
                       onClick={(e) => e.stopPropagation()}
-                      className="inline-flex items-center justify-center gap-2 bg-[#10662A] text-white px-6 py-2.5 rounded-md font-semibold shadow-md hover:shadow-lg text-sm md:text-base"
+                      className="
+inline-flex items-center justify-center gap-2
+bg-[#10662A] hover:bg-[#0d5221]
+text-white px-6 py-2.5 rounded-md
+font-semibold shadow-md hover:shadow-xl
+hover:scale-[1.02] transition-all duration-200
+text-sm md:text-base
+"
                     >
                       {slide.primaryLabel}
                     </a>
@@ -178,7 +187,8 @@ const HomeSlider = () => {
                     <a
                       href={slide.secondaryHref}
                       onClick={(e) => e.stopPropagation()}
-                      className="inline-flex items-center justify-center gap-2 bg-white text-[#10662A] border border-[#d8efe6] px-6 py-2.5 rounded-md font-semibold text-sm md:text-base"
+                      className="inline-flex items-center justify-center gap-2 bg-white/90 text-[#10662A] border border-[#d8efe6] hover:bg-white
+ px-6 py-2.5 rounded-md font-semibold text-sm md:text-base"
                     >
                       {slide.secondaryLabel}
                     </a>

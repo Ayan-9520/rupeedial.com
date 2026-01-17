@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import personalLoan from "../assets/images/home-loan.png";
+
 
 type Step = 1 | 2 | 3 | 4;
 
@@ -539,12 +539,13 @@ const HomeLoanPage: React.FC = () => {
       let json: BackendResponse | null = null;
       try {
         json = raw ? (JSON.parse(raw) as BackendResponse) : null;
-      } catch (_e: unknown) {
-        // Agar JSON parse fail ho, to raw text show karo
-        throw new Error(
-          `Server sent invalid JSON. Status: ${res.status}. Body: ${raw}`
-        );
-      }
+      } catch (e: unknown) {
+  console.error(e);
+  throw new Error(
+    `Server sent invalid JSON. Status: ${res.status}. Body: ${raw}`
+  );
+}
+
 
       console.log("API Response:", json);
 
@@ -652,7 +653,8 @@ We will assist you throughout your loan journey!
               Home Loans for{" "}
               <span className="text-[#390A5D]">Your Dream House</span>
             </h1>
-            <h2 className="text-base md:text-lg font-semibold text-[#10662A] mb-3">
+            <h2 className="text-[16px] md:text-[18px] text-[#390A5D]/80 font-medium mb-4">
+
               Low Interest • High Eligibility • Multiple Banks
             </h2>
             <p className="text-sm md:text-base text-[#390A5D] mb-5 leading-relaxed">
@@ -679,16 +681,7 @@ We will assist you throughout your loan journey!
             </div>
           </div>
 
-          {/* RIGHT IMAGE */}
-          <div className="flex-1 flex justify-center">
-            <div className="relative">
-              <img
-                src={personalLoan}
-                alt="Home Loan Illustration"
-                className="w-[260px] sm:w-[300px] md:w-[340px] h-auto rounded-xl object-contain"
-              />
-            </div>
-          </div>
+       
         </div>
       </section>
 

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 
 /* ================= TYPES ================= */
 
@@ -11,23 +11,21 @@ interface Documents {
   gst?: File;
   officeProof?: File;
 }
+const generateRefCode = () =>
+  "DSA-" +
+  Math.random().toString(36).substring(2, 6).toUpperCase() +
+  Date.now().toString().slice(-4);
 
 /* ================= COMPONENT ================= */
 
 const JoinUs: React.FC = () => {
   const [dsaType, setDsaType] = useState<DsaType>("");
   const [docs, setDocs] = useState<Documents>({});
-  const [refCode, setRefCode] = useState("");
+ const [refCode] = useState(generateRefCode);
+
 
   /* ===== Reference Code (Frontend Demo) ===== */
-  useEffect(() => {
-    setRefCode(
-      "DSA-" +
-        Math.random().toString(36).substring(2, 6).toUpperCase() +
-        Date.now().toString().slice(-4)
-    );
-  }, []);
-
+  
   /* ===== File Handler ===== */
   const handleFileChange = (
     e: React.ChangeEvent<HTMLInputElement>,
@@ -36,9 +34,17 @@ const JoinUs: React.FC = () => {
     if (!e.target.files || !e.target.files[0]) return;
     setDocs((prev) => ({ ...prev, [key]: e.target.files![0] }));
   };
+type JoinUsForm = HTMLFormElement & {
+  fullName: HTMLInputElement;
+  mobile: HTMLInputElement;
+  email: HTMLInputElement;
+  city: HTMLInputElement;
+};
 
   /* ===== Submit ===== */
  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const form = e.currentTarget as JoinUsForm;
+
   e.preventDefault();
 
   if (!docs.pan || !docs.aadhar || !docs.bank) {
@@ -51,10 +57,11 @@ const JoinUs: React.FC = () => {
 
 // text fields
 formData.append("dsaType", dsaType);
-formData.append("fullName", (e.target as any).fullName?.value || "");
-formData.append("mobile", (e.target as any).mobile?.value || "");
-formData.append("email", (e.target as any).email?.value || "");
-formData.append("city", (e.target as any).city?.value || "");
+formData.append("fullName", form.fullName.value);
+formData.append("mobile", form.mobile.value);
+formData.append("email", form.email.value);
+formData.append("city", form.city.value);
+
 formData.append("refCode", refCode);
 
 // mandatory documents

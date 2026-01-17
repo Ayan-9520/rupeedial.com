@@ -278,7 +278,7 @@ const handleSubmitApplication = async () => {
     if (!res.ok) throw new Error("Failed");
 
     setStep(4);
-  } catch (e) {
+  } catch  {
     alert("Submission failed");
   } finally {
     setSubmitting(false);

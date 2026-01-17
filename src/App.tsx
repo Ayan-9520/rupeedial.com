@@ -15,6 +15,7 @@ import Personal from "./pages/Personal";
 import CreditCards from "./pages/CreditCards";
 import AutoLoan from "./pages/AutoLoan";
 import MachineryLoan from "./pages/machineryLoan";
+import EducationLoan from "./pages/EducationLoan";
 import Expert from "./pages/Expert";
 import Eligibility from "./pages/Eligibility";
 import LearnEarn from "./pages/LearnEarn";
@@ -23,6 +24,7 @@ import Career from "./pages/Career";
 import Contact from "./pages/Contact";
 import PartnerLogin from "./pages/PartnerLogin";
 import Login from "./pages/Login";
+
 
 
 
@@ -46,6 +48,7 @@ const App: React.FC = () => {
             <Route path="/credit-cards" element={<CreditCards />} />
             <Route path="/auto-loan" element={<AutoLoan />} />
             <Route path="/machinery-loan" element={<MachineryLoan />} />
+             <Route path="/education-loan" element={<EducationLoan />} />
              <Route path="/expert" element={<Expert />} />
                <Route path="/eligibility" element={<Eligibility />} />
                <Route path="/learn&Earn" element={<LearnEarn />} />

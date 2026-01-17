@@ -139,7 +139,20 @@ interface BackendResponse {
   leadId?: string;
 }
 
-
+const CAR_RULES = {
+  new: {
+    ltv: 0.85,
+    rate: 9.0,
+  },
+  "used-lt3": {
+    ltv: 0.75,
+    rate: 10.5,
+  },
+  "used-3-7": {
+    ltv: 0.65,
+    rate: 12.0,
+  },
+} as const;
 
 const AutoLoanPage: React.FC = () => {
   const [sortBy, setSortBy] = useState<"interest" | "emi" | "processing">("interest");
@@ -186,20 +199,7 @@ const warningBtnClass =
     agreePrivacy: false,
   });
 
-const CAR_RULES = {
-  new: {
-    ltv: 0.85,
-    rate: 9.0, // base rate
-  },
-  "used-lt3": {
-    ltv: 0.75,
-    rate: 10.5,
-  },
-  "used-3-7": {
-    ltv: 0.65,
-    rate: 12.0,
-  },
-} as const;
+
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
