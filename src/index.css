@@ -1,0 +1,18 @@
+/* src/index.css */
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* global body style */
+body {
+  @apply bg-white text-slate-900;
+  margin: 0;
+}
+
+/* React root ko full height do */
+#root {
+  min-height: 100vh;
+}
+
+
