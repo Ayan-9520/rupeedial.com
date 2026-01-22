@@ -11,20 +11,20 @@ import Msme from "./pages/MsmeLoan";
 import Mudra from "./pages/MudraLoan";
 import HomeLoan from "./pages/HomeLoan";
 import Lap from "./pages/LapLoan";
+
 import Personal from "./pages/Personal";
 import CreditCards from "./pages/CreditCards";
 import AutoLoan from "./pages/AutoLoan";
 import MachineryLoan from "./pages/machineryLoan";
 import EducationLoan from "./pages/EducationLoan";
 import Expert from "./pages/Expert";
-import Eligibility from "./pages/Eligibility";
+import Eligibility from "./pages/CheckEligibility";
 import LearnEarn from "./pages/LearnEarn";
 import Insurance from "./pages/Insurance";
 import Career from "./pages/Career";
 import Contact from "./pages/Contact";
 import PartnerLogin from "./pages/PartnerLogin";
 import Login from "./pages/Login";
-
 
 
 
@@ -50,14 +50,14 @@ const App: React.FC = () => {
             <Route path="/machinery-loan" element={<MachineryLoan />} />
              <Route path="/education-loan" element={<EducationLoan />} />
              <Route path="/expert" element={<Expert />} />
-               <Route path="/eligibility" element={<Eligibility />} />
+               <Route path="/check-eligibility" element={<Eligibility />} />
                <Route path="/learn&Earn" element={<LearnEarn />} />
             <Route path="/insurance" element={<Insurance />} />
             <Route path="/career" element={<Career />} />
             <Route path="/contact" element={<Contact />} />
              <Route path="/partner-login" element={<PartnerLogin />} />
             <Route path="/login" element={<Login />} />
-
+           
            
           </Routes>
         </div>

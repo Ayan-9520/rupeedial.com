@@ -48,10 +48,16 @@ const EducationLoanNew: React.FC = () => {
   };
 
   const handleSubmit = async () => {
-    if (!form.studentName || !form.mobile || !form.loanAmount) {
-      alert("Please fill all mandatory fields");
-      return;
-    }
+  if (
+    !form.studentName ||
+    !form.mobile ||
+    !form.loanAmount ||
+    !form.studyLocation   // ✅ YE LINE ADD KARO
+  ) {
+    alert("Please fill all mandatory fields");
+    return;
+  }
+
 
     try {
       const res = await fetch(

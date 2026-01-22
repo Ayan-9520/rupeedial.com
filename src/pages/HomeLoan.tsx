@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-
+import personalLoan from "../assets/images/home-loan.png";
 
 type Step = 1 | 2 | 3 | 4;
 
@@ -681,7 +681,16 @@ We will assist you throughout your loan journey!
             </div>
           </div>
 
-       
+          {/* RIGHT IMAGE */}
+          <div className="flex-1 flex justify-center">
+            <div className="relative">
+              <img
+                src={personalLoan}
+                alt="Home Loan Illustration"
+                className="w-[260px] sm:w-[300px] md:w-[340px] h-auto rounded-xl object-contain"
+              />
+            </div>
+          </div>
         </div>
       </section>
 
@@ -2051,12 +2060,18 @@ We will assist you throughout your loan journey!
 
                   <div className={actionButtonsClass}>
                     <button
-                      type="button"
-                      className={primaryBtnClass}
-                      onClick={handleDownloadApplication}
-                    >
-                      Download Application Copy
-                    </button>
+  type="button"
+  className={primaryBtnClass}
+  onClick={() => {
+    handleDownloadApplication();
+    setTimeout(() => {
+      window.location.href = "/";
+    }, 500);
+  }}
+>
+  Download Application Copy
+</button>
+
                     <button
                       type="button"
                       className={outlineBtnClass}

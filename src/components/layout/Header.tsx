@@ -16,7 +16,7 @@ const Header: React.FC = () => {
           </Link>
 
           {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center gap-6 text-sm font-medium text-slate-800">
+          <nav className="hidden md:flex items-center gap-5 text-sm font-medium text-slate-800">
 
             <Link to="/" className="text-[[#390A5D]] ">
               Home
@@ -76,8 +76,8 @@ const Header: React.FC = () => {
    <Link to="/expert" className="text-[#10662A] hover:text-[#0D4F20]">
             Loan  Expert
             </Link>
-
-            <Link to="/eligibility" className="text-[#10662A] hover:text-[#0D4F20]">
+ 
+            <Link to="/check-eligibility" className="text-[#10662A] hover:text-[#0D4F20]">
             Check Eligibility
             </Link>
              
@@ -105,7 +105,7 @@ const Header: React.FC = () => {
                   Career
                 </Link>
                    <Link to="/partner-login" className="block px-4 py-2  text-[#10662A] hover:text-[#0D4F20] hover:bg-[#B0E9B2]  ">
-                  Partner Login
+                  Become a Partner
                 </Link>
                  
               
@@ -170,6 +170,9 @@ const Header: React.FC = () => {
           <Link to="/personal-loan" onClick={() => setMobileOpen(false)}>Personal Loan</Link>
           <Link to="/auto-loan" onClick={() => setMobileOpen(false)}>Auto Loan</Link>
           <Link to="/credit-cards" onClick={() => setMobileOpen(false)}>Credit Cards</Link>
+          <Link to="/machinery-loan" onClick={() => setMobileOpen(false)}>Machinery Loan</Link>
+          <Link to="/education-loan" onClick={() => setMobileOpen(false)}>Education Loan</Link>
+         
         </div>
       </details>
 
@@ -191,7 +194,7 @@ const Header: React.FC = () => {
 
         <div className="mt-1 ml-3 flex flex-col gap-1 text-[13px]">
           <Link to="/career" onClick={() => setMobileOpen(false)}>Career</Link>
-          <Link to="/join-us" onClick={() => setMobileOpen(false)}>Partner Login</Link>
+          <Link to="/join-us" onClick={() => setMobileOpen(false)}>Become a Partner </Link>
         </div>
       </details>
 

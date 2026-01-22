@@ -1,18 +1,20 @@
-// src/pages/Home.tsx
-import React from "react";
+import HomeTopSection from "../components/home/HomeTopSection";
+import HowItWorksSection from "../components/home/HowItWorksSection";
+import LoanProductsSlider from "../components/home/LoanProductsSlider";
+import HomeBottomSection from "../components/home/HomeBottomSection";
 
-import HomeSlider from "../components/home/Slider";
-import HomeContent from "../components/home/HomeContent"; // 👈 Sahi file ka naam
-
-const Home: React.FC = () => {
+const HomeContent = () => {
   return (
-    <div className="flex flex-col min-h-screen bg-white">
-      <main className="flex-1">
-        <HomeSlider />
-        <HomeContent />
-      </main>
-    </div>
+    <main className="bg-white">
+      <HomeTopSection />
+
+      <HowItWorksSection />
+
+   <LoanProductsSlider />
+
+      <HomeBottomSection />
+    </main>
   );
 };
 
-export default Home;
+export default HomeContent;

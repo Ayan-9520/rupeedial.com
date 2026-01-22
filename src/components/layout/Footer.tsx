@@ -96,7 +96,7 @@ const Footer: React.FC = () => {
             <ul className="space-y-2 text-sm text-white/85">
               <li><Link to="/about" className="hover:text-white">About Us</Link></li>
               <li><Link to="/expert" className="hover:text-white">Talk to Expert</Link></li>
-              <li><Link to="/eligibility" className="hover:text-white">Check Eligibility</Link></li>
+              <li><Link to="/check-eligibility" className="hover:text-white">Check Eligibility</Link></li>
               <li><Link to="/learn&earn" className="hover:text-white">Learn & Earn</Link></li>
               <li><Link to="/insurance" className="hover:text-white">Insurance</Link></li>
               <li><Link to="/career" className="hover:text-white">Career</Link></li>

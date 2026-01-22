@@ -25,25 +25,52 @@ const RupeeDialConnect: React.FC = () => {
   const [userType, setUserType] = useState("");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+const [error, setError] = useState("");
+const [loggingIn, setLoggingIn] = useState(false);
+const [showPassword, setShowPassword] = useState(false);
 
   const handleLogin = () => {
-    if (!userType || !username || !password) {
-      alert("All fields are required to continue.");
-      return;
-    }
+  setError("");
 
-    console.log({
-      loginType: activeTab,
-      role: userType,
-      username,
-    });
+  if (!userType || !username || !password) {
+    setError("Please fill all required fields.");
+    return;
+  }
 
+  // Mobile / Email validation
+  const isMobile = /^[0-9]{10}$/.test(username);
+  const isEmail = /\S+@\S+\.\S+/.test(username);
+
+  if (!isMobile && !isEmail) {
+    setError("Enter a valid 10-digit mobile number or email address.");
+    return;
+  }
+
+  setLoggingIn(true);
+
+  // 🔹 Yahan future me API call aayega
+  console.log({
+    loginType: activeTab,
+    role: userType,
+    username,
+  });
+
+  // Demo success
+  setTimeout(() => {
+    setLoggingIn(false);
     alert("Login successful. Redirecting to CRM...");
-  };
+    // yahan later: window.location.href = "/crm-dashboard";
+  }, 1000);
+};
 
-  const handleRegister = () => {
-    window.location.href = "/join-us";
-  };
+const handleRegister = () => {
+  if (activeTab === "associate") {
+    window.location.href = "/join-us";   // Partner registration page
+  } else {
+    alert("Employee accounts are created by HR. Please contact HR team.");
+  }
+};
+
 
   return (
     <div className="relative min-h-screen bg-white overflow-hidden">
@@ -144,7 +171,7 @@ const RupeeDialConnect: React.FC = () => {
                   setUserType("");
                 }}
               >
-                Associate
+                Partner
               </button>
               <button
                 className={`w-1/2 py-2 rounded-lg font-semibold transition ${
@@ -189,32 +216,65 @@ const RupeeDialConnect: React.FC = () => {
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 className="mt-1 w-full rounded-xl border px-4 py-2 focus:ring-2 focus:ring-green-500"
-                placeholder="Enter registered mobile or email"
+                placeholder="10-digit mobile number or email"
+
               />
             </div>
 
             {/* Password */}
-            <div className="mb-6">
-              <label className="text-sm font-medium">Password</label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="mt-1 w-full rounded-xl border px-4 py-2 focus:ring-2 focus:ring-green-500"
-                placeholder="Enter your password"
-              />
-            </div>
+            <div className="mb-6 relative">
+  <label className="text-sm font-medium">Password</label>
+  <input
+    type={showPassword ? "text" : "password"}
+    value={password}
+    onChange={(e) => setPassword(e.target.value)}
+    className="mt-1 w-full rounded-xl border px-4 py-2 pr-12 focus:ring-2 focus:ring-green-500"
+    placeholder="Enter your password"
+  />
+
+  {/* Show / Hide Button */}
+  <button
+    type="button"
+    onClick={() => setShowPassword((p) => !p)}
+    className="absolute right-3 top-9 text-xs text-green-700 font-semibold"
+  >
+    {showPassword ? "Hide" : "Show"}
+  </button>
+</div>
+
+{/* Forgot Password Link */}
+<div className="text-right mb-4">
+  <a
+    href="/forgot-password"
+    className="text-sm text-green-700 hover:underline"
+  >
+    Forgot Password?
+  </a>
+</div>
+
+{/* Error Message */}
+{error && (
+  <p className="text-red-600 text-sm text-center mb-4">
+    {error}
+  </p>
+)}
 
             {/* Login Button */}
-            <button
-              onClick={handleLogin}
-              className="w-full bg-green-600 hover:bg-green-700 text-white py-3 rounded-xl font-semibold transition shadow-lg"
-            >
-              Login to CRM
-            </button>
+           <button
+  onClick={handleLogin}
+  disabled={loggingIn || !!error}
+  className="w-full bg-green-600 hover:bg-green-700 text-white py-3 rounded-xl font-semibold transition shadow-lg disabled:opacity-50"
+>
+  {loggingIn ? "Logging in..." : "Login to CRM"}
+</button>
+
 
             {/* Register */}
             <div className="mt-6 text-center">
+              <p className="text-xs text-gray-500 mt-4 text-center">
+  This is a secure login for authorized RupeeDial partners and employees only.
+</p>
+
               <p className="text-sm text-gray-600 mb-1">
                 Don’t have an account?
               </p>

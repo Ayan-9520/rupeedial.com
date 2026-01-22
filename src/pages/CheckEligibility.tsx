@@ -1,4 +1,12 @@
 import React, { useState } from "react";
+import { useLocation } from "react-router-dom";
+
+import CreatableSelect from "react-select/creatable";
+import type { SingleValue } from "react-select";
+
+ // 🔥 YE LINE VERY IMPORTANT
+
+
 
 /* ================= TYPES ================= */
 
@@ -25,6 +33,10 @@ interface FormData {
   courseFee?: number | "";
   acceptConsent: boolean;
 }
+type SelectOption = {
+  label: string;
+  value: Product;
+};
 
 
 /* ================= PRODUCT RULES ================= */
@@ -59,6 +71,12 @@ const PRODUCT_RULES: Record<Product, { minIncome: number; multiplier: number; ma
     maxCap: 10000000,        // ₹1 crore max
   },
 };
+const productSelectOptions: SelectOption[] = Object.keys(PRODUCT_RULES).map(
+  (p) => ({
+    label: p,
+    value: p as Product,
+  })
+);
 
 /* ================= DOCUMENT RULES ================= */
 
@@ -80,6 +98,22 @@ const DOCUMENT_RULES: Record<Product, string[]> = {
 };
 
 /* ================= BANK DATA ================= */
+const DOC_KEY_MAP: Record<string, "kyc" | "incomeProof" | "bankStatement" | "other"> = {
+  "PAN Card": "kyc",
+  "Aadhaar Card": "kyc",
+
+  "Salary Slip": "incomeProof",
+  "Income Proof": "incomeProof",
+  "ITR": "incomeProof",
+  "GST Certificate": "incomeProof",
+  "Business Proof": "incomeProof",
+
+  "Bank Statement": "bankStatement",
+
+  "Property Papers": "other",
+  "Quotation": "other",
+  "Admission Letter": "other",
+};
 
 interface BankRule {
   name: string;
@@ -467,84 +501,115 @@ const calculateBankEligibility = (
   courseFee?: number        // 👈 YE LINE ADD KARO
 ) => {
 
-  const rule = PRODUCT_RULES[product];
-  const multiplier =
-  bank.productMultiplier[product] || rule.multiplier;
+const rule = PRODUCT_RULES[product];
 
-  if (!rule || !multiplier) return 0;
+const bankMultiplier = bank.productMultiplier[product];
 
-  // 1️⃣ Base amount from income
-  let amount = income * multiplier;
+// ❌ If product rule missing (should never happen)
+if (!rule) return 0;
 
-  // 2️⃣ EMI impact
-  if (emi > 0) {
-    amount -= emi * bank.emiFactor;
-  }
+// ✅ For Credit Card, allow fallback to product rule multiplier
+let multiplier: number;
 
-  // 3️⃣ CIBIL impact
-  if (cibil && cibil < 650) {
-    amount *= bank.lowCibilFactor;
-  }
+if (product === "Credit Card") {
+  multiplier = bankMultiplier || rule.multiplier;
+} else {
+  // ❌ For other products, bank must explicitly support it
+  if (!bankMultiplier) return 0;
+  multiplier = bankMultiplier;
+}
 
-  // 4️⃣ Product-specific logic
 
-  // 🏠 Home Loan / LAP → Property based cap
-  if (
-    (product === "Home Loan" || product === "Loan Against Property") &&
-    propertyValue
-  ) {
-    amount = Math.min(amount, propertyValue * 0.7); // 70% LTV
-  }
+// ❌ Below minimum income
+if (income < rule.minIncome) return 0;
 
-  // 🎓 Education Loan → Course fee based soft cap (simulate)
-  // 🎓 Education Loan → 80% of Course Fee cap + maxCap
+
+
+// 🏦 Bank strength factor (deterministic, no random)
+const bankStrength =
+  1 +
+  (bank.emiFactor - 6) * 0.02 +
+  (bank.lowCibilFactor - 0.75);
+
+// 1️⃣ Base amount
+let amount = income * multiplier * bankStrength;
+
+// 2️⃣ EMI impact
+if (emi > 0) {
+  amount -= emi * bank.emiFactor;
+}
+
+// 3️⃣ CIBIL impact
+if (cibil && cibil < 650) {
+  amount *= bank.lowCibilFactor;
+}
+// 💳 Credit Card – Bank-wise realistic cap
+if (product === "Credit Card") {
+  // base cap from rule
+  let cardCap = rule.maxCap || 500000;
+
+  // adjust cap by bank profile
+  if (bank.emiFactor >= 9) cardCap = 500000;       // HDFC, Bajaj, HDB
+  else if (bank.emiFactor >= 8) cardCap = 400000;  // SBI, ICICI, Axis
+  else if (bank.emiFactor >= 7) cardCap = 300000;  // PSU banks
+  else cardCap = 200000;                           // small banks
+
+  amount = Math.min(amount, cardCap);
+}
+
+// 4️⃣ Home Loan / LAP cap
+if (
+  (product === "Home Loan" || product === "Loan Against Property") &&
+  propertyValue
+) {
+  amount = Math.min(amount, propertyValue * 0.7);
+}
+
+// 🎓 Education Loan
 if (product === "Education Loan") {
   if (courseFee) {
-    const maxByFee = courseFee * 0.8; // 80% of course fee
+    const maxByFee = courseFee * 0.8;
     amount = Math.min(amount, maxByFee);
   }
 
   if (rule.maxCap) {
-    amount = Math.min(amount, rule.maxCap); // 50 lakh cap
+    amount = Math.min(amount, rule.maxCap);
   }
 }
 
+// 🏭 Machinery Loan cap
+if (product === "Machinery Loan" && rule.maxCap) {
+  amount = Math.min(amount, rule.maxCap);
+}
 
+// 🪙 Mudra cap
+if (product === "Mudra Loan") {
+  amount = Math.min(amount, 1000000);
+}
 
-  // 🏭 Machinery Loan → Asset-backed, allow higher multiple but cap
-  if (product === "Machinery Loan") {
-    if (rule.maxCap) {
-      amount = Math.min(amount, rule.maxCap);
-    }
-  }
-
-  // 🪙 Mudra Loan hard cap
-  if (product === "Mudra Loan") {
-    amount = Math.min(amount, 1000000);
-  }
-
-  
- // 5️⃣ General max cap for any product (except Education Loan)
-if (rule.maxCap && product !== "Education Loan") {
+// 5️⃣ General max cap (except Education & Credit Card)
+if (rule.maxCap && product !== "Education Loan" && product !== "Credit Card") {
   amount = Math.min(amount, rule.maxCap);
 }
 
 
-  return Math.max(0, Math.round(amount));
-};
+return Math.max(0, Math.round(amount));
+};   // ✅ CLOSE calculateBankEligibility FUNCTION
+
 
 /* ================= COMPONENT ================= */
 
+
 const LoanJourney: React.FC = () => {
   // step: 1 = Form, 1.5 = Bank Result, 2 = Upload, 3 = Disbursal
+  const location = useLocation();
   const [applicationId] = useState(
   () => `RD-${Math.floor(100000 + Math.random() * 900000)}`
 );
 
   const [step, setStep] = useState<1 | 1.5 | 2 | 3>(1);
-
-  const [form, setForm] = useState<FormData>({
-  product: "",
+const [form, setForm] = useState<FormData>({
+  product: location.state?.product || "",
   fullName: "",
   mobile: "",
   employment: "",
@@ -552,13 +617,24 @@ const LoanJourney: React.FC = () => {
   existingEmi: "",
   cibil: "",
   propertyValue: "",
-  courseFee: "",          // 👈 ADD THIS LINE
+  courseFee: "",
   acceptConsent: false,
 });
 
-  const [uploadedFiles, setUploadedFiles] = useState<Record<string, File | null>>(
-    {}
-  );
+
+
+  const [uploadedFiles, setUploadedFiles] = useState<{
+  kyc: File[];
+  incomeProof: File[];
+  bankStatement: File[];
+  other: File[];
+}>({
+  kyc: [],
+  incomeProof: [],
+  bankStatement: [],
+  other: [],
+});
+
 const downloadApplication = () => {
   const content = `
 Rupeedial Loan Application
@@ -649,23 +725,70 @@ if (form.product === "Education Loan" && !form.courseFee) {
     ? DOCUMENT_RULES[form.product]
     : [];
 
-  const handleFileChange = (doc: string, file: File | null) => {
-    setUploadedFiles((prev) => ({
-      ...prev,
-      [doc]: file,
-    }));
-  };
+ const handleFileChange = (
+  type: "kyc" | "incomeProof" | "bankStatement" | "other",
+  fileList: FileList | null
+) => {
+  if (!fileList) return;
 
-  const handleUploadContinue = () => {
-    const missing = requiredDocs.filter((doc) => !uploadedFiles[doc]);
+  setUploadedFiles((prev) => ({
+    ...prev,
+    [type]: Array.from(fileList),
+  }));
+};
 
-    if (missing.length > 0) {
-      alert("Please upload all required documents.");
+ const handleUploadContinue = async () => {
+  try {
+    // const missing = requiredDocs.filter((doc) => {
+    //   const key =
+    //     doc === "PAN Card" || doc === "Aadhaar Card" ? "kyc" :
+    //     doc === "Salary Slip" || doc === "Income Proof" ? "incomeProof" :
+    //     doc === "Bank Statement" ? "bankStatement" :
+    //     "other";
+
+    //   return uploadedFiles[key as keyof typeof uploadedFiles].length === 0;
+    // });
+
+    // if (missing.length > 0) {
+    //   alert("Please upload all required documents.");
+    //   return;
+    // }
+
+    const fd = new FormData();
+
+    // 🔹 form JSON
+    fd.append("formData", JSON.stringify(form));
+
+    // 🔹 documents (keys MUST match backend)
+    uploadedFiles.kyc.forEach((f) => fd.append("kyc[]", f));
+    uploadedFiles.incomeProof.forEach((f) => fd.append("incomeProof[]", f));
+    uploadedFiles.bankStatement.forEach((f) => fd.append("bankStatement[]", f));
+    uploadedFiles.other.forEach((f) => fd.append("other[]", f));
+
+    const res = await fetch(
+  "https://rupeedial.com/rupeedial-backend/public/index.php?action=eligibility/apply",
+  {
+    method: "POST",
+    body: fd,
+  }
+);
+
+
+    const data = await res.json();
+
+    if (!data.success) {
+      alert("Submission failed: " + data.message);
       return;
     }
 
+    // 🔹 Save lead id from backend
     setStep(3);
-  };
+
+  } catch (err) {
+    console.error(err);
+    alert("Server error. Please try again.");
+  }
+};
 
   return (
     <main className="bg-[#f8fffb] min-h-screen">
@@ -732,19 +855,51 @@ if (form.product === "Education Loan" && !form.courseFee) {
             </h2>
 
             <div className="grid md:grid-cols-2 gap-4">
-              <select
-                name="product"
-                className={inputClass}
-                value={form.product}
-                onChange={handleChange}
-              >
-                <option value="">Select Loan Product*</option>
-                {Object.keys(PRODUCT_RULES).map((p) => (
-                  <option key={p} value={p}>
-                    {p}
-                  </option>
-                ))}
-              </select>
+  <div className="w-full">
+  <CreatableSelect<SelectOption, false>
+    options={productSelectOptions}
+
+    placeholder="Select or type loan product*"
+
+    isSearchable={true}     // 🔍 Search enabled
+    isClearable={true}     // ❌ Clear button
+
+    value={
+      form.product
+        ? { label: form.product, value: form.product }
+        : null
+    }
+
+    onChange={(selected: SingleValue<SelectOption>) => {
+      if (selected) {
+        setForm((prev) => ({
+          ...prev,
+          product: selected.value,
+        }));
+      } else {
+        setForm((prev) => ({
+          ...prev,
+          product: "",
+        }));
+      }
+    }}
+
+    styles={{
+      control: (base) => ({
+        ...base,
+        minHeight: "42px",
+        borderColor: "#cbd5e1",
+        boxShadow: "none",
+      }),
+      input: (base) => ({
+        ...base,
+        color: "#000",
+      }),
+    }}
+  />
+</div>
+
+
 
               <select
                 name="employment"
@@ -939,12 +1094,15 @@ if (form.product === "Education Loan" && !form.courseFee) {
                   </div>
 
                   <input
-                    type="file"
-                    onChange={(e) =>
-                      handleFileChange(doc, e.target.files?.[0] || null)
-                    }
-                    className="text-sm"
-                  />
+  type="file"
+  multiple                    // 🔥 MULTIPLE VERY IMPORTANT
+  onChange={(e) => {
+    const key = DOC_KEY_MAP[doc];   // 👈 "kyc" | "incomeProof" | ...
+    handleFileChange(key, e.target.files);
+  }}
+  className="text-sm"
+/>
+
                 </div>
               ))}
             </div>

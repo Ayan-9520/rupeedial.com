@@ -18,10 +18,13 @@ const generateRefCode = () =>
 
 /* ================= COMPONENT ================= */
 
-const JoinUs: React.FC = () => {
+const BecomePartner: React.FC = () => {
+  const [loading, setLoading] = useState(false);
   const [dsaType, setDsaType] = useState<DsaType>("");
   const [docs, setDocs] = useState<Documents>({});
  const [refCode] = useState(generateRefCode);
+const [submitted, setSubmitted] = useState(false);
+const [applicationId, setApplicationId] = useState<string | null>(null);
 
 
   /* ===== Reference Code (Frontend Demo) ===== */
@@ -43,38 +46,46 @@ type JoinUsForm = HTMLFormElement & {
 
   /* ===== Submit ===== */
  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-  const form = e.currentTarget as JoinUsForm;
-
   e.preventDefault();
 
+  if (loading) return;
+  setLoading(true);
+
+  const form = e.currentTarget as JoinUsForm;
+
+  // Mandatory docs check
   if (!docs.pan || !docs.aadhar || !docs.bank) {
     alert("PAN, Aadhar & Bank Proof are mandatory");
+    setLoading(false);
     return;
   }
 
+  // Franchise specific check
+  if (dsaType === "franchise" && !docs.officeProof) {
+    alert("Office address proof is mandatory for Franchise partners");
+    setLoading(false);
+    return;
+  }
 
   const formData = new FormData();
 
-// text fields
-formData.append("dsaType", dsaType);
-formData.append("fullName", form.fullName.value);
-formData.append("mobile", form.mobile.value);
-formData.append("email", form.email.value);
-formData.append("city", form.city.value);
+  // text fields
+  formData.append("dsaType", dsaType);
+  formData.append("fullName", form.fullName.value);
+  formData.append("mobile", form.mobile.value);
+  formData.append("email", form.email.value);
+  formData.append("city", form.city.value);
+  formData.append("refCode", refCode);
 
-formData.append("refCode", refCode);
+  // documents
+  if (docs.pan) formData.append("pan", docs.pan);
+  if (docs.aadhar) formData.append("aadhar", docs.aadhar);
+  if (docs.bank) formData.append("bank", docs.bank);
+  if (docs.officeProof) formData.append("officeProof", docs.officeProof);
+  if (docs.gst) formData.append("gst", docs.gst);
 
-// mandatory documents
-if (docs.pan) formData.append("pan", docs.pan);
-if (docs.aadhar) formData.append("aadhar", docs.aadhar);
-if (docs.bank) formData.append("bank", docs.bank);
-
-// optional documents
-if (docs.gst) formData.append("gst", docs.gst);
-
-
-fetch(
-  "https://rupeedial.com/rupeedial-backend/public/index.php?route=dsa-register",
+ fetch(
+  "https://rupeedial.com/rupeedial-backend/public/index.php?action=partner/apply",
   {
     method: "POST",
     body: formData,
@@ -82,42 +93,274 @@ fetch(
 )
   .then((res) => res.json())
   .then((data) => {
-    console.log("Backend response:", data);
+  setLoading(false);
 
-    if (data.success) {
-      alert("DSA Application submitted successfully");
-    } else {
-      alert(data.message || "Submission failed");
-    }
-  })
+  if (data.success) {
+  setSubmitted(true);
+  setApplicationId(data.leadId || refCode);
+}
+ else {
+    alert(data.message || "Submission failed");
+  }
+})
+
   .catch((err) => {
     console.error(err);
+    setLoading(false);
     alert("Server error");
   });
-
 };
-
 
   return (
     <div className="bg-green-50">
+{/* HERO + FORM SECTION */}
+<section className="py-10 bg-green-50">
+  <div className="max-w-7xl mx-auto px-6">
+    <div className="grid md:grid-cols-2 gap-12 items-start">
+   {/* ================= RIGHT : HERO / INFO CARD ================= */}
+      <div className="bg-white rounded-2xl shadow-lg p-10 border sticky top-24">
 
-      {/* HERO */}
-     {/* HERO */}
-      <section className="bg-green-100 py-16">
-        <div className="max-w-7xl mx-auto px-4">
-          <span className="bg-green-200 text-green-800 px-4 py-1 rounded-full text-sm">
-            RupeeDial DSA Connect
-          </span>
-          <h1 className="text-4xl font-bold text-green-900 mt-4">
-            Join RupeeDial as a DSA Partner
-          </h1>
-          <p className="text-gray-700 mt-3 text-lg max-w-3xl">
-            Partner with RupeeDial and earn high commissions by referring loan
-            customers. We manage banks, processing & disbursals — you focus on
-            business growth.
-          </p>
+        <span className="inline-block mb-4 bg-green-100 text-green-800 px-4 py-1 rounded-full text-sm">
+          RupeeDial DSA Connect
+        </span>
+
+        <h2 className="text-3xl font-extrabold text-green-900 mb-4 leading-tight">
+          Build Your Career as a{" "}
+          <span className="text-green-700">RupeeDial DSA Partner</span>
+        </h2>
+
+        <p className="text-gray-600 mb-6 leading-relaxed">
+          Partner with RupeeDial and earn high commissions by referring loan
+          customers. We manage banks, processing & disbursals — you focus on
+          business growth.
+        </p>
+
+        <div className="space-y-4">
+          {[
+            "Up to 95% commission on disbursed cases",
+            "Tie-ups with 20+ Banks & NBFCs",
+            "Dedicated Relationship Manager",
+            "Fast payouts & transparent tracking",
+            "Zero joining fee for Channel & Referral",
+          ].map((text, i) => (
+            <div key={i} className="flex items-start gap-3">
+              <div className="w-6 h-6 flex items-center justify-center rounded-full bg-green-100 text-green-700 font-bold">
+                ✓
+              </div>
+              <p className="text-gray-700 text-sm">{text}</p>
+            </div>
+          ))}
         </div>
-      </section>
+
+        <div className="mt-8 bg-green-50 border rounded-xl p-6">
+          <p className="text-sm text-gray-700 mb-2">
+            <b>Application Process:</b>
+          </p>
+          <ol className="list-decimal pl-5 text-sm text-gray-600 space-y-1">
+            <li>Submit registration form</li>
+            <li>Document verification by team</li>
+            <li>Onboarding & agreement</li>
+            <li>Start sourcing & earning</li>
+          </ol>
+        </div>
+
+      </div>
+      {/* ================= LEFT : FORM CARD ================= */}
+      <div className="bg-white rounded-2xl shadow-xl p-10 border">
+
+        {submitted && (
+          <div className="bg-green-50 border border-green-300 rounded-xl p-8 text-center mb-10">
+            <h2 className="text-2xl font-bold text-green-800 mb-2">
+              Application Submitted Successfully 🎉
+            </h2>
+
+            <p className="text-green-700 mb-6">
+              Our team will contact you within <b>24–48 working hours</b>.
+            </p>
+
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <button
+                onClick={() => {
+                  const link = document.createElement("a");
+                  link.href = `https://rupeedial.com/rupeedial-backend/public/index.php?action=partner/download&leadId=${applicationId}`;
+                  link.setAttribute("download", "");
+                  document.body.appendChild(link);
+                  link.click();
+                  document.body.removeChild(link);
+
+                  setTimeout(() => {
+                    window.location.reload();
+                  }, 800);
+                }}
+                className="bg-green-700 hover:bg-green-800 text-white px-6 py-3 rounded-lg font-semibold"
+              >
+                Download Application
+              </button>
+
+              <button
+                onClick={() => (window.location.href = "/")}
+                className="border border-green-700 text-green-700 hover:bg-green-700 hover:text-white px-6 py-3 rounded-lg font-semibold"
+              >
+                Back to Home
+              </button>
+            </div>
+          </div>
+        )}
+
+        <h2 className="text-2xl font-bold text-green-900 mb-1">
+          DSA Registration Form
+        </h2>
+        <p className="text-gray-600 mb-8">
+          Fill the form to start your partnership journey with RupeeDial.
+        </p>
+
+        {!submitted && (
+          <>
+            <form onSubmit={handleSubmit} className="grid md:grid-cols-2 gap-6">
+
+              {/* DSA TYPE */}
+              <select
+                required
+                value={dsaType}
+                onChange={(e) => {
+                  setDsaType(e.target.value as DsaType);
+                  setDocs({});
+                }}
+                className="md:col-span-2 border rounded-lg px-4 py-3"
+              >
+                <option value="">Select DSA Type</option>
+                <option value="franchise">Franchise Partner</option>
+                <option value="channel">Channel Partner</option>
+                <option value="referral">Referral Partner</option>
+              </select>
+
+              {/* BASIC DETAILS */}
+              <input
+                required
+                name="fullName"
+                placeholder="Full Name"
+                className="border px-4 py-3 rounded-lg"
+              />
+
+              <input
+                required
+                name="mobile"
+                type="tel"
+                pattern="[0-9]{10}"
+                placeholder="Mobile Number"
+                className="border px-4 py-3 rounded-lg"
+              />
+
+              <input
+                required
+                name="email"
+                type="email"
+                placeholder="Email Address"
+                className="border px-4 py-3 rounded-lg"
+              />
+
+              <input
+                required
+                name="city"
+                placeholder="City"
+                className="border px-4 py-3 rounded-lg"
+              />
+
+              <input
+                name="refCode"
+                value={refCode}
+                readOnly
+                className="md:col-span-2 bg-gray-100 border px-4 py-3 rounded-lg font-semibold"
+              />
+
+              {/* DOCUMENT UPLOADS */}
+              {dsaType && (
+                <>
+                  <div>
+                    <label className="text-sm font-medium">PAN Card *</label>
+                    <input
+                      type="file"
+                      required
+                      accept=".jpg,.jpeg,.png,.pdf"
+                      onChange={(e) => handleFileChange(e, "pan")}
+                      className="w-full border rounded-lg px-3 py-2"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-medium">Aadhar Card *</label>
+                    <input
+                      type="file"
+                      required
+                      accept=".jpg,.jpeg,.png,.pdf"
+                      onChange={(e) => handleFileChange(e, "aadhar")}
+                      className="w-full border rounded-lg px-3 py-2"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-medium">Bank Proof *</label>
+                    <input
+                      type="file"
+                      required
+                      accept=".jpg,.jpeg,.png,.pdf"
+                      onChange={(e) => handleFileChange(e, "bank")}
+                      className="w-full border rounded-lg px-3 py-2"
+                    />
+                  </div>
+
+                  {dsaType === "franchise" && (
+                    <div>
+                      <label className="text-sm font-medium">
+                        Office Address Proof *
+                      </label>
+                      <input
+                        type="file"
+                        required
+                        accept=".jpg,.jpeg,.png,.pdf"
+                        onChange={(e) => handleFileChange(e, "officeProof")}
+                        className="w-full border rounded-lg px-3 py-2"
+                      />
+                    </div>
+                  )}
+
+                  {dsaType !== "referral" && (
+                    <div>
+                      <label className="text-sm font-medium">
+                        GST Certificate (Optional)
+                      </label>
+                      <input
+                        type="file"
+                        accept=".jpg,.jpeg,.png,.pdf"
+                        onChange={(e) => handleFileChange(e, "gst")}
+                        className="w-full border rounded-lg px-3 py-2"
+                      />
+                    </div>
+                  )}
+                </>
+              )}
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="md:col-span-2 bg-green-700 hover:bg-green-800 text-white py-4 rounded-xl text-lg font-bold shadow-md hover:shadow-lg transition"
+              >
+                {loading ? "Submitting..." : "Submit DSA Application"}
+              </button>
+            </form>
+
+            <p className="text-center text-gray-600 mt-6">
+              Please provide accurate details. Our onboarding team will verify
+              and reach out shortly.
+            </p>
+          </>
+        )}
+      </div>
+
+   
+    </div>
+  </div>
+</section>
 
       {/* WHAT IS DSA */}
       <section className="py-16 bg-white text-center">
@@ -181,7 +424,8 @@ fetch(
           Franchise Proposal & Commercials
         </h2>
 
-        <div className="max-w-5xl mx-auto px-4 bg-white rounded-xl border p-8 text-gray-700">
+        <div className="max-w-5xl mx-auto px-6 bg-white rounded-2xl shadow-lg p-10 text-gray-700">
+
           <ul className="list-disc pl-6 space-y-3">
             <li>
               <b>Probation Period:</b> First 90 days performance-based evaluation
@@ -260,118 +504,9 @@ fetch(
         </div>
       </section>
 
-      {/* JOIN FORM */}
-      <section className="py-16 bg-white">
-        <div className="max-w-4xl mx-auto px-4">
-          <h2 className="text-3xl font-bold text-green-900 text-center mb-8">
-            DSA Registration Form
-          </h2>
-
-          <form onSubmit={handleSubmit} className="grid md:grid-cols-2 gap-6">
-
-            {/* DSA TYPE */}
-            <select
-              required
-              value={dsaType}
-              onChange={(e) => {
-                setDsaType(e.target.value as DsaType);
-                setDocs({});
-              }}
-              className="md:col-span-2 border rounded-lg px-4 py-3"
-            >
-              <option value="">Select DSA Type</option>
-              <option value="franchise">Franchise Partner</option>
-             
-              <option value="channel">Channel Partner</option>
-              <option value="referral">Referral Partner</option>
-            </select>
-
-            {/* BASIC DETAILS */}
-           <input
-  required
-  name="fullName"
-  placeholder="Full Name"
-  className="border px-4 py-3 rounded-lg"
-/>
-
-<input
-  required
-  name="mobile"
-  type="tel"
-  pattern="[0-9]{10}"
-  placeholder="Mobile Number"
-  className="border px-4 py-3 rounded-lg"
-/>
-
-
-<input
-  required
-  name="email"
-  type="email"
-  placeholder="Email Address"
-  className="border px-4 py-3 rounded-lg"
-/>
-
-<input
-  required
-  name="city"
-  placeholder="City"
-  className="border px-4 py-3 rounded-lg"
-/>
-
-
-
-  <input
-  name="refCode"
-  value={refCode}
-  readOnly
-  className="md:col-span-2 bg-gray-100 border px-4 py-3 rounded-lg font-semibold"
-/>
-
-
-
-            {/* DOCUMENT UPLOADS */}
-            <div>
-              <label className="text-sm font-medium">PAN Card *</label>
-              <input type="file" required accept=".jpg,.jpeg,.png,.pdf"
-                onChange={(e) => handleFileChange(e, "pan")}
-                className="w-full border rounded-lg px-3 py-2" />
-            </div>
-
-            <div>
-              <label className="text-sm font-medium">Aadhar Card *</label>
-              <input type="file" required accept=".jpg,.jpeg,.png,.pdf"
-                onChange={(e) => handleFileChange(e, "aadhar")}
-                className="w-full border rounded-lg px-3 py-2" />
-            </div>
-
-            <div>
-              <label className="text-sm font-medium">Bank Proof *</label>
-              <input type="file" required accept=".jpg,.jpeg,.png,.pdf"
-                onChange={(e) => handleFileChange(e, "bank")}
-                className="w-full border rounded-lg px-3 py-2" />
-            </div>
-
-          
-
-            <div>
-              <label className="text-sm font-medium">GST Certificate (Optional)</label>
-              <input type="file" accept=".jpg,.jpeg,.png,.pdf"
-                onChange={(e) => handleFileChange(e, "gst")}
-                className="w-full border rounded-lg px-3 py-2" />
-            </div>
-
-            <button
-              type="submit"
-              className="md:col-span-2 bg-green-700 hover:bg-green-800 text-white py-4 rounded-lg text-lg font-semibold"
-            >
-              Submit DSA Application
-            </button>
-          </form>
-        </div>
-      </section>
+     
     </div>
-  );
+   );
 };
 
-export default JoinUs;
+export default BecomePartner;
