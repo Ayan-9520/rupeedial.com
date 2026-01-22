@@ -6,7 +6,7 @@ import check from "../../assets/images/check.png";
 import udyam from "../../assets/images/udhyam-2.png";
 import disbursal from "../../assets/images/disbursal.png";
 const stats = [
-  { label: "Partner Banks", value: "20+" },
+  { label: "Partner Banks", value: "50+" },
   { label: "Journeys Completed", value: "7.5 lac+" },
   { label: "Loans Disbursed", value: "74,000 cr.+" },
   { label: "Video Testimonials", value: "6,300+" },
@@ -43,13 +43,13 @@ const HowItWorksSection = () => {
   };
 
   return (
-    <section className="w-full bg-green-50 py-10">
+    <section className="w-full bg-green-50 py-2">
       <div className="max-w-7xl mx-auto px-6">
 
-        <h2 className="text-3xl font-bold text-center text-[#390A5D] mb-8">
+        <h2 className="text-2xl font-bold text-center text-[#390A5D] mb-2">
           Why Rupeedial ?
         </h2>
- <p className="text-2xl  text-center text-[#10662A] mb-8">
+ <p className="text-xl  text-center text-[#10662A] mb-2">
           Estimated Loan eligibility. Check Probable Offers. Lowest Interest Rate
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-10 text-center">

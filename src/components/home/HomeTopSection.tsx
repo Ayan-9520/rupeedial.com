@@ -12,21 +12,21 @@ const HomeTopSection = () => {
   return (
     <>
    {/* ===== HERO SECTION (FULL WIDTH GRADIENT) ===== */}
-<section className="bg-gradient-to-b from-white to-green-50 py-2">
+<section className="bg-gradient-to-b from-white to-green-50  ">
   <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 md:grid-cols-2 gap-10 items-center">
     
     {/* LEFT CONTENT */}
     <div>
       <h1 className="text-4xl md:text-4xl font-bold text-[#390A5D] leading-tight">
-        Compare Loans from Leading Banks & NBFCs –{" "}
-        <span className="text-[#10662A]">Fast, Transparent & Secure</span>
+        Compare Loans Easily from –{" "}
+        <span className="text-[#10662A]">Leading Banks & NBFCs</span>
       </h1>
 
       <p className="mt-5 text-lg text-[#390A5D]">
         Instant eligibility check • Expert assistance • Pan-India partner network
       </p>
 
-      <div className="mt-8 flex gap-4 flex-wrap">
+      <div className="mt-2 flex gap-4 flex-wrap">
          <Link
           to="/expert"
           className="bg-[#10662A] hover:bg-[#0d5221] text-white px-8 py-3 rounded-lg font-semibold shadow"
@@ -48,7 +48,7 @@ const HomeTopSection = () => {
       <img
         src={campare}
         alt="RupeeDial Platform"
-        className="w-full max-w-md"
+        className="w-full  max-w-md"
       />
     </div>
   </div>
@@ -58,11 +58,11 @@ const HomeTopSection = () => {
      {/* ===== TRUSTED BY STRIP ===== */}
 {/* ===== TRUSTED BY STRIP (SINGLE LINE) ===== */}
 {/* ===== TRUSTED BY STRIP ===== */}
-<section className="bg-[#ffffff py-6">
+<section className="bg-green-100">
   <div className="max-w-7xl mx-auto px-6">
     <div className="flex flex-wrap items-center justify-center gap-8">
 
-      <p className="text-xl md:text-2xl font-bold text-[#10662A] whitespace-nowrap">
+      <p className="text-xl md:text-xl font-bold text-[#10662A] whitespace-nowrap">
         Trusted by 50+ Bank & NBFC Partners
       </p>
 

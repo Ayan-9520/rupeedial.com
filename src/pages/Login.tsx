@@ -54,18 +54,50 @@ const [showPassword, setShowPassword] = useState(false);
     role: userType,
     username,
   });
+fetch("https://rupeedial.com/rupeedial-backend/public/index.php?action=auth/login", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({
+    loginType: activeTab,   // associate / employee
+    role: userType,        // Franchise Partner / IT Team etc
+    username: username,    // mobile or email
+    password: password,
+  }),
+})
+  .then(async (res) => {
+    const data = await res.json();
 
-  // Demo success
-  setTimeout(() => {
+    if (!res.ok || !data.success) {
+      throw new Error(data.message || "Login failed");
+    }
+
+    return data;
+  })
+  .then((data) => {
     setLoggingIn(false);
+
+    // ✅ Login success
     alert("Login successful. Redirecting to CRM...");
-    // yahan later: window.location.href = "/crm-dashboard";
-  }, 1000);
+
+    // 🔐 Token / Session store (future)
+    localStorage.setItem("crm_token", data.token);
+
+    // 🚀 Redirect to CRM
+    window.location.href = "/crm-dashboard";
+  })
+  .catch((err) => {
+    console.error(err);
+    setLoggingIn(false);
+    setError(err.message || "Server error. Please try again.");
+  });
+
 };
 
 const handleRegister = () => {
   if (activeTab === "associate") {
-    window.location.href = "/join-us";   // Partner registration page
+    window.location.href = "/partner-login";   // Partner registration page
   } else {
     alert("Employee accounts are created by HR. Please contact HR team.");
   }

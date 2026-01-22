@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-
+import partner from "../assets/images/partnerlogin.png";
 /* ================= TYPES ================= */
 
 type DsaType = "" | "franchise" | "branch" | "channel" | "referral";
@@ -11,18 +11,30 @@ interface Documents {
   gst?: File;
   officeProof?: File;
 }
-const generateRefCode = () =>
-  "DSA-" +
-  Math.random().toString(36).substring(2, 6).toUpperCase() +
-  Date.now().toString().slice(-4);
+const generateRefCode = (type: DsaType) => {
+  let prefix = "PRT";
+
+  if (type === "referral") prefix = "REF";
+  else if (type === "channel") prefix = "CHN";
+  else if (type === "franchise") prefix = "FRA";
+
+  return (
+    prefix +
+    "-" +
+    Math.random().toString(36).substring(2, 6).toUpperCase() +
+    Date.now().toString().slice(-4)
+  );
+};
 
 /* ================= COMPONENT ================= */
 
 const BecomePartner: React.FC = () => {
   const [loading, setLoading] = useState(false);
-  const [dsaType, setDsaType] = useState<DsaType>("");
+  const [dsaType, setDsaType] = useState<DsaType>("referral");
   const [docs, setDocs] = useState<Documents>({});
- const [refCode] = useState(generateRefCode);
+ const [refCode, setRefCode] = useState<string>(
+  generateRefCode("referral") // default referral
+);
 const [submitted, setSubmitted] = useState(false);
 const [applicationId, setApplicationId] = useState<string | null>(null);
 
@@ -114,28 +126,39 @@ type JoinUsForm = HTMLFormElement & {
   return (
     <div className="bg-green-50">
 {/* HERO + FORM SECTION */}
-<section className="py-10 bg-green-50">
+<section className="py-5 bg-green-50">
   <div className="max-w-7xl mx-auto px-6">
     <div className="grid md:grid-cols-2 gap-12 items-start">
    {/* ================= RIGHT : HERO / INFO CARD ================= */}
       <div className="bg-white rounded-2xl shadow-lg p-10 border sticky top-24">
-
         <span className="inline-block mb-4 bg-green-100 text-green-800 px-4 py-1 rounded-full text-sm">
-          RupeeDial DSA Connect
+          RupeeDial Partner Connect
         </span>
 
         <h2 className="text-3xl font-extrabold text-green-900 mb-4 leading-tight">
           Build Your Career as a{" "}
-          <span className="text-green-700">RupeeDial DSA Partner</span>
+          <span className="text-green-700">RupeeDial Partner Partner</span>
         </h2>
 
-        <p className="text-gray-600 mb-6 leading-relaxed">
+        <p className="text-gray-600  text-sm mb-2 leading-relaxed">
           Partner with RupeeDial and earn high commissions by referring loan
           customers. We manage banks, processing & disbursals — you focus on
           business growth.
         </p>
+        <p className="text-2xl  text-center font-extrabold text-green-700  leading-tight">
+          Partner Application Process
+          </p>
+ <div className=" rounded-2xl overflow-hidden h-68">
+  <img
+    src={partner}   // apni image ka path
+    alt="Partner Process"
+    className="w-full h-full object-cover"
+  />
+</div>
 
-        <div className="space-y-4">
+        
+
+        <div className=" mb-[-100px]">
           {[
             "Up to 95% commission on disbursed cases",
             "Tie-ups with 20+ Banks & NBFCs",
@@ -152,94 +175,112 @@ type JoinUsForm = HTMLFormElement & {
           ))}
         </div>
 
-        <div className="mt-8 bg-green-50 border rounded-xl p-6">
-          <p className="text-sm text-gray-700 mb-2">
-            <b>Application Process:</b>
-          </p>
-          <ol className="list-decimal pl-5 text-sm text-gray-600 space-y-1">
-            <li>Submit registration form</li>
-            <li>Document verification by team</li>
-            <li>Onboarding & agreement</li>
-            <li>Start sourcing & earning</li>
-          </ol>
+        <div className="mt-8 bg-white   p-6">
+     
+
         </div>
 
       </div>
       {/* ================= LEFT : FORM CARD ================= */}
-      <div className="bg-white rounded-2xl shadow-xl p-10 border">
+      <div className="bg-white rounded-2xl shadow-xl p-8 border">
 
         {submitted && (
-          <div className="bg-green-50 border border-green-300 rounded-xl p-8 text-center mb-10">
-            <h2 className="text-2xl font-bold text-green-800 mb-2">
-              Application Submitted Successfully 🎉
-            </h2>
-
-            <p className="text-green-700 mb-6">
-              Our team will contact you within <b>24–48 working hours</b>.
-            </p>
-
+        
+            
+            
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <button
-                onClick={() => {
-                  const link = document.createElement("a");
-                  link.href = `https://rupeedial.com/rupeedial-backend/public/index.php?action=partner/download&leadId=${applicationId}`;
-                  link.setAttribute("download", "");
-                  document.body.appendChild(link);
-                  link.click();
-                  document.body.removeChild(link);
+              {submitted && (
+  <div className="bg-white border border-green-300 rounded-xl p-8 text-center mb-10">
+    <h2 className="text-2xl font-bold text-green-800 mb-2">
+      Application Submitted Successfully 🎉
+    </h2>
 
-                  setTimeout(() => {
-                    window.location.reload();
-                  }, 800);
-                }}
-                className="bg-green-700 hover:bg-green-800 text-white px-6 py-3 rounded-lg font-semibold"
-              >
-                Download Application
-              </button>
+    <p className="text-green-700 mb-4">
+      Your Application ID:
+    </p>
 
-              <button
-                onClick={() => (window.location.href = "/")}
-                className="border border-green-700 text-green-700 hover:bg-green-700 hover:text-white px-6 py-3 rounded-lg font-semibold"
-              >
-                Back to Home
-              </button>
+    <p className="text-xl font-bold text-green-900 mb-6">
+      {applicationId}
+    </p>
+
+    <p className="text-green-700 mb-6">
+      Our team will contact you within <b>24–48 working hours</b> after document verification.
+    </p>
+
+    <button
+      onClick={() => (window.location.href = "/")}
+      className="border border-green-700 text-green-700 hover:bg-green-700 hover:text-white px-6 py-3 rounded-lg font-semibold"
+    >
+      Back to Home
+    </button>
+  </div>
+)}
+
+             
             </div>
-          </div>
+          
         )}
 
         <h2 className="text-2xl font-bold text-green-900 mb-1">
-          DSA Registration Form
+          Partner Registration Form
         </h2>
-        <p className="text-gray-600 mb-8">
+        <p className="text-gray-600 mb-4">
           Fill the form to start your partnership journey with RupeeDial.
         </p>
 
         {!submitted && (
           <>
-            <form onSubmit={handleSubmit} className="grid md:grid-cols-2 gap-6">
+           <form 
+  onSubmit={handleSubmit} 
+  className="grid md:grid-cols-2 gap-6"
+  encType="multipart/form-data"   // 🔥 YE LINE ADD KARO
+>
 
-              {/* DSA TYPE */}
-              <select
-                required
-                value={dsaType}
-                onChange={(e) => {
-                  setDsaType(e.target.value as DsaType);
-                  setDocs({});
-                }}
-                className="md:col-span-2 border rounded-lg px-4 py-3"
-              >
-                <option value="">Select DSA Type</option>
-                <option value="franchise">Franchise Partner</option>
-                <option value="channel">Channel Partner</option>
-                <option value="referral">Referral Partner</option>
-              </select>
+
+              {/* Partner TYPE */}
+              <div className="md:col-span-2">
+  <label className="block  font-medium text-gray-700">
+    Select Partner Type
+  </label>
+
+  <div className="flex bg-green-100 rounded-xl ">
+   {[
+  { label: "Referral Partner", value: "referral" },
+  { label: "Channel Partner", value: "channel" },
+  { label: "Franchise Partner", value: "franchise" },
+].map((item) => (
+  <button
+    key={item.value}
+    type="button"
+    onClick={() => {
+      const type = item.value as DsaType;
+      setDsaType(type);
+      setDocs({});
+      // Optional: clear old file inputs visually (future improvement)
+
+      setRefCode(generateRefCode(type)); // type ke hisaab se code
+    }}
+    className={`flex-1 py-2 rounded-lg font-semibold transition
+      ${
+        dsaType === item.value
+          ? "bg-green-700 text-white shadow"
+          : "text-green-800 hover:bg-green-200"
+      }`}
+  >
+    {item.label}
+  </button>
+))}
+
+  </div>
+</div>
+
 
               {/* BASIC DETAILS */}
               <input
                 required
                 name="fullName"
                 placeholder="Full Name"
-                className="border px-4 py-3 rounded-lg"
+                className="border px-2 py-1 rounded-lg"
               />
 
               <input
@@ -248,7 +289,7 @@ type JoinUsForm = HTMLFormElement & {
                 type="tel"
                 pattern="[0-9]{10}"
                 placeholder="Mobile Number"
-                className="border px-4 py-3 rounded-lg"
+                className="border px-2 py-1 rounded-lg"
               />
 
               <input
@@ -256,21 +297,21 @@ type JoinUsForm = HTMLFormElement & {
                 name="email"
                 type="email"
                 placeholder="Email Address"
-                className="border px-4 py-3 rounded-lg"
+                className="border px-2 py-1 rounded-lg"
               />
 
               <input
                 required
                 name="city"
                 placeholder="City"
-                className="border px-4 py-3 rounded-lg"
+                className="border px-2 py-1 rounded-lg"
               />
 
               <input
                 name="refCode"
                 value={refCode}
                 readOnly
-                className="md:col-span-2 bg-gray-100 border px-4 py-3 rounded-lg font-semibold"
+                className="md:col-span-2 bg-gray-100 border px-4 py-1 rounded-lg font-semibold"
               />
 
               {/* DOCUMENT UPLOADS */}
@@ -283,7 +324,7 @@ type JoinUsForm = HTMLFormElement & {
                       required
                       accept=".jpg,.jpeg,.png,.pdf"
                       onChange={(e) => handleFileChange(e, "pan")}
-                      className="w-full border rounded-lg px-3 py-2"
+                      className="w-full border rounded-lg px-3 py-1"
                     />
                   </div>
 
@@ -294,7 +335,7 @@ type JoinUsForm = HTMLFormElement & {
                       required
                       accept=".jpg,.jpeg,.png,.pdf"
                       onChange={(e) => handleFileChange(e, "aadhar")}
-                      className="w-full border rounded-lg px-3 py-2"
+                      className="w-full border rounded-lg px-3 py-1"
                     />
                   </div>
 
@@ -305,7 +346,7 @@ type JoinUsForm = HTMLFormElement & {
                       required
                       accept=".jpg,.jpeg,.png,.pdf"
                       onChange={(e) => handleFileChange(e, "bank")}
-                      className="w-full border rounded-lg px-3 py-2"
+                      className="w-full border rounded-lg px-3 py-1"
                     />
                   </div>
 
@@ -343,16 +384,13 @@ type JoinUsForm = HTMLFormElement & {
               <button
                 type="submit"
                 disabled={loading}
-                className="md:col-span-2 bg-green-700 hover:bg-green-800 text-white py-4 rounded-xl text-lg font-bold shadow-md hover:shadow-lg transition"
+                className="md:col-span-2 bg-green-700 hover:bg-green-800 text-white py-2 rounded-xl text-lg font-bold shadow-md hover:shadow-lg transition"
               >
-                {loading ? "Submitting..." : "Submit DSA Application"}
+                {loading ? "Submitting..." : "Join RupeeDial as Partner"}
               </button>
             </form>
 
-            <p className="text-center text-gray-600 mt-6">
-              Please provide accurate details. Our onboarding team will verify
-              and reach out shortly.
-            </p>
+           
           </>
         )}
       </div>
@@ -362,13 +400,13 @@ type JoinUsForm = HTMLFormElement & {
   </div>
 </section>
 
-      {/* WHAT IS DSA */}
+      {/* WHAT IS Partner */}
       <section className="py-16 bg-white text-center">
         <h2 className="text-3xl font-bold text-green-900 mb-4">
-          What is RupeeDial DSA Connect?
+          What is RupeeDial Partner Connect?
         </h2>
         <p className="max-w-4xl mx-auto text-gray-700 text-lg">
-          RupeeDial DSA Connect is a partner program that allows individuals and
+          RupeeDial Partner Connect is a partner program that allows individuals and
           businesses to earn commission by sourcing loan customers. RupeeDial
           handles credit evaluation, bank coordination, documentation and
           disbursal.
@@ -384,7 +422,7 @@ type JoinUsForm = HTMLFormElement & {
           {[
             ["High Commission", "Earn up to 95% commission on successful loans"],
             ["Multiple Products", "Personal, Home, MSME, LAP, Auto & Cards"],
-            ["Zero Initial Cost", "No joining fee for Channel & Referral DSAs"],
+            ["Zero Initial Cost", "No joining fee for Channel & Referral Partners"],
             ["Dedicated Support", "Relationship manager & backend support"],
             ["Fast Payouts", "Transparent, on-time settlements"],
             ["Trusted Brand", "Tie-ups with top banks & NBFCs"],
@@ -405,7 +443,7 @@ type JoinUsForm = HTMLFormElement & {
         <div className="max-w-6xl mx-auto px-4 grid md:grid-cols-2 gap-6 text-gray-700">
           <ul className="list-disc pl-6 space-y-2">
             <li>Professionals with sales or finance background</li>
-            <li>Existing loan agents or DSAs</li>
+            <li>Existing loan agents or Partners</li>
             <li>Business owners with local market reach</li>
             <li>Individuals with office space in prime location</li>
           </ul>
@@ -455,7 +493,7 @@ type JoinUsForm = HTMLFormElement & {
       {/* DOCUMENT REQUIREMENTS – 4 COLUMNS */}
       <section className="py-16 bg-white">
         <h2 className="text-3xl font-bold text-green-900 text-center mb-10">
-          Documents Required (By DSA Type)
+          Documents Required (By Partner Type)
         </h2>
 
         <div className="max-w-7xl mx-auto px-4 grid lg:grid-cols-3 md:grid-cols-2 gap-6">

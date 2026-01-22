@@ -608,6 +608,7 @@ const LoanJourney: React.FC = () => {
 );
 
   const [step, setStep] = useState<1 | 1.5 | 2 | 3>(1);
+const [selectedBank, setSelectedBank] = useState<string | null>(null);
 const [form, setForm] = useState<FormData>({
   product: location.state?.product || "",
   fullName: "",
@@ -731,10 +732,10 @@ if (form.product === "Education Loan" && !form.courseFee) {
 ) => {
   if (!fileList) return;
 
-  setUploadedFiles((prev) => ({
-    ...prev,
-    [type]: Array.from(fileList),
-  }));
+ setUploadedFiles((prev) => ({
+  ...prev,
+  [type]: [...prev[type], ...Array.from(fileList)],
+}));
 };
 
  const handleUploadContinue = async () => {
@@ -758,7 +759,7 @@ if (form.product === "Education Loan" && !form.courseFee) {
 
     // 🔹 form JSON
     fd.append("formData", JSON.stringify(form));
-
+fd.append("selectedBank", selectedBank || "");
     // 🔹 documents (keys MUST match backend)
     uploadedFiles.kyc.forEach((f) => fd.append("kyc[]", f));
     uploadedFiles.incomeProof.forEach((f) => fd.append("incomeProof[]", f));
@@ -802,7 +803,7 @@ if (form.product === "Education Loan" && !form.courseFee) {
         Check Loan Eligibility
         <br />
         <span className="text-[#390A5D]">
-          Across 20+ Banks in Seconds
+          Across 50+ Banks in Seconds
         </span>
       </h1>
 
@@ -844,233 +845,259 @@ if (form.product === "Education Loan" && !form.courseFee) {
   </div>
 </section>
 
+{/* ================= STEP 1 : FORM ================= */}
+{step === 1 && (
+  <section id="eligibility-form" className="max-w-4xl mx-auto px-4 py-12">
+    <div className="bg-white rounded-xl border shadow p-6 space-y-6">
 
-      {/* ================= STEP 1 : FORM ================= */}
-      {step === 1 && (
-        <section className="max-w-4xl mx-auto px-4  py-12">
-          <div className="bg-white rounded-xl border shadow p-6 space-y-6">
+      <h2 className="text-xl font-bold text-center text-[#10662A]">
+        Check Loan Eligibility
+      </h2>
 
-            <h2 className="text-xl font-bold text-center text-[#10662A]">
-              Check Loan Eligibility
-            </h2>
+      <div className="grid md:grid-cols-2 gap-4">
+        <div className="w-full">
+          <CreatableSelect<SelectOption, false>
+            options={productSelectOptions}
+            placeholder="Select or type loan product*"
+            isSearchable={true}
+            isClearable={true}
+            value={
+              form.product
+                ? { label: form.product, value: form.product }
+                : null
+            }
+            onChange={(selected: SingleValue<SelectOption>) => {
+              if (selected) {
+                setForm((prev) => ({
+                  ...prev,
+                  product: selected.value,
+                }));
+              } else {
+                setForm((prev) => ({
+                  ...prev,
+                  product: "",
+                }));
+              }
+            }}
+            styles={{
+              control: (base) => ({
+                ...base,
+                minHeight: "42px",
+                borderColor: "#cbd5e1",
+                boxShadow: "none",
+              }),
+              input: (base) => ({
+                ...base,
+                color: "#000",
+              }),
+            }}
+          />
+        </div>
 
-            <div className="grid md:grid-cols-2 gap-4">
-  <div className="w-full">
-  <CreatableSelect<SelectOption, false>
-    options={productSelectOptions}
+        <select
+          name="employment"
+          className={inputClass}
+          value={form.employment}
+          onChange={handleChange}
+        >
+          <option value="">Employment Type*</option>
+          <option value="Salaried">Salaried</option>
+          <option value="Self-Employed">Self Employed</option>
+          <option value="Business Owner">Business Owner</option>
+        </select>
+      </div>
 
-    placeholder="Select or type loan product*"
+      <div className="grid md:grid-cols-2 gap-4">
+        <input
+          name="fullName"
+          placeholder="Full Name*"
+          className={inputClass}
+          value={form.fullName}
+          onChange={handleChange}
+        />
+        <input
+          name="mobile"
+          placeholder="Mobile Number*"
+          className={inputClass}
+          value={form.mobile}
+          onChange={handleChange}
+        />
+      </div>
 
-    isSearchable={true}     // 🔍 Search enabled
-    isClearable={true}     // ❌ Clear button
+      <div className="grid md:grid-cols-3 gap-4">
+        <input
+          type="number"
+          name="monthlyIncome"
+          placeholder="Monthly Income*"
+          className={inputClass}
+          value={form.monthlyIncome}
+          onChange={handleChange}
+        />
+        <input
+          type="number"
+          name="existingEmi"
+          placeholder="Existing EMI"
+          className={inputClass}
+          value={form.existingEmi}
+          onChange={handleChange}
+        />
+        <input
+          type="number"
+          name="cibil"
+          placeholder="CIBIL Score"
+          className={inputClass}
+          value={form.cibil}
+          onChange={handleChange}
+        />
+      </div>
 
-    value={
-      form.product
-        ? { label: form.product, value: form.product }
-        : null
-    }
-
-    onChange={(selected: SingleValue<SelectOption>) => {
-      if (selected) {
-        setForm((prev) => ({
-          ...prev,
-          product: selected.value,
-        }));
-      } else {
-        setForm((prev) => ({
-          ...prev,
-          product: "",
-        }));
-      }
-    }}
-
-    styles={{
-      control: (base) => ({
-        ...base,
-        minHeight: "42px",
-        borderColor: "#cbd5e1",
-        boxShadow: "none",
-      }),
-      input: (base) => ({
-        ...base,
-        color: "#000",
-      }),
-    }}
-  />
-</div>
-
-
-
-              <select
-                name="employment"
-                className={inputClass}
-                value={form.employment}
-                onChange={handleChange}
-              >
-                <option value="">Employment Type*</option>
-                <option value="Salaried">Salaried</option>
-                <option value="Self-Employed">Self Employed</option>
-                <option value="Business Owner">Business Owner</option>
-              </select>
-            </div>
-
-            <div className="grid md:grid-cols-2 gap-4">
-              <input
-                name="fullName"
-                placeholder="Full Name*"
-                className={inputClass}
-                value={form.fullName}
-                onChange={handleChange}
-              />
-              <input
-                name="mobile"
-                placeholder="Mobile Number*"
-                className={inputClass}
-                value={form.mobile}
-                onChange={handleChange}
-              />
-            </div>
-
-            <div className="grid md:grid-cols-3 gap-4">
-              <input
-                type="number"
-                name="monthlyIncome"
-                placeholder="Monthly Income*"
-                className={inputClass}
-                value={form.monthlyIncome}
-                onChange={handleChange}
-              />
-              <input
-                type="number"
-                name="existingEmi"
-                placeholder="Existing EMI"
-                className={inputClass}
-                value={form.existingEmi}
-                onChange={handleChange}
-              />
-              <input
-                type="number"
-                name="cibil"
-                placeholder="CIBIL Score"
-                className={inputClass}
-                value={form.cibil}
-                onChange={handleChange}
-              />
-            </div>
-
-            {(form.product === "Home Loan" ||
-              form.product === "Loan Against Property") && (
-              <input
-                type="number"
-                name="propertyValue"
-                placeholder="Property Value*"
-                className={inputClass}
-                value={form.propertyValue}
-                onChange={handleChange}
-              />
-            )}
-{form.product === "Education Loan" && (
-  <input
-    type="number"
-    name="courseFee"
-    placeholder="Total Course Fee*"
-    className={inputClass}
-    value={form.courseFee || ""}
-    onChange={handleChange}
-  />
-)}
-
-            <label className="flex gap-2 text-xs text-[#390A5D]">
-              <input
-                type="checkbox"
-                name="acceptConsent"
-                checked={form.acceptConsent}
-                onChange={handleChange}
-              />
-              I authorize Rupeedial & partner banks to contact me.
-            </label>
-
-            <button
-              onClick={handleEligibilitySubmit}
-              className="w-full bg-[#10662A] hover:bg-[#0d5221] text-white py-3 rounded-lg font-semibold"
-            >
-              Check Eligibility
-            </button>
-          </div>
-        </section>
+      {(form.product === "Home Loan" ||
+        form.product === "Loan Against Property") && (
+        <input
+          type="number"
+          name="propertyValue"
+          placeholder="Property Value*"
+          className={inputClass}
+          value={form.propertyValue}
+          onChange={handleChange}
+        />
       )}
+
+      {form.product === "Education Loan" && (
+        <input
+          type="number"
+          name="courseFee"
+          placeholder="Total Course Fee*"
+          className={inputClass}
+          value={form.courseFee || ""}
+          onChange={handleChange}
+        />
+      )}
+
+      <label className="flex gap-2 text-xs text-[#390A5D]">
+        <input
+          type="checkbox"
+          name="acceptConsent"
+          checked={form.acceptConsent}
+          onChange={handleChange}
+        />
+        I authorize Rupeedial & partner banks to contact me.
+      </label>
+
+      <button
+        onClick={handleEligibilitySubmit}
+        className="w-full bg-[#10662A] hover:bg-[#0d5221] text-white py-3 rounded-lg font-semibold"
+      >
+        Check Eligibility
+      </button>
+
+    </div>
+  </section>
+)}
 
       {/* ================= STEP 1.5 : BANK RESULT ================= */}
-      {step === 1.5 && (
-        <section className="max-w-6xl mx-auto mt-4 px-4 pb-16">
-          <div className="bg-white rounded-xl border shadow p-6">
-
-            <h2 className="text-xl font-semibold text-center text-[#10662A] mb-6">
-              Bank-wise Eligibility Result
-            </h2>
-
-            <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-4">
-              {BANKS.map((bank) => {
-               const eligibleAmount = calculateBankEligibility(
-  bank,
-  Number(form.monthlyIncome),
-  Number(form.existingEmi || 0),
-  Number(form.cibil || 700),
-  form.product as Product,
-  Number(form.propertyValue),
-  Number(form.courseFee)   // 👈 YE LAST PARAMETER ADD KARO
-);
 
 
-                return (
-                  <div
-                    key={bank.name}
-                    className="border rounded-lg p-4 flex justify-between items-center"
-                  >
-                    <div>
-                      <p className="font-semibold text-sm">{bank.name}</p>
-                      <p className="text-sm text-[#390A5D]">
-                        Eligible ₹ {eligibleAmount.toLocaleString()}
-                      </p>
-                     {eligibleAmount > 0 ? (
-  <span className="text-green-600 text-xs font-semibold">Eligible</span>
-) : (
-  <span className="text-red-500 text-xs font-semibold">Not Eligible</span>
+     {step === 1.5 && (
+  <section className="max-w-6xl mx-auto mt-4 px-4 pb-16">
+    <div className="bg-white rounded-xl border shadow p-6">
+
+      <h2 className="text-xl font-semibold text-center text-[#10662A] mb-6">
+        Bank-wise Eligibility Result
+      </h2>
+
+      <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-4">
+        {BANKS.map((bank) => {
+          const eligibleAmount = calculateBankEligibility(
+            bank,
+            Number(form.monthlyIncome),
+            Number(form.existingEmi || 0),
+            Number(form.cibil || 700),
+            form.product as Product,
+            Number(form.propertyValue),
+            Number(form.courseFee)
+          );
+
+          // ✅ YAHAN LAGENGI YE 2 LINES (MAP KE ANDAR)
+          const isEligible = eligibleAmount > 0;
+          const isSelected = selectedBank === bank.name;
+
+          return (
+            <div
+              key={bank.name}
+              onClick={() => {
+                if (!isEligible) return;
+                setSelectedBank(bank.name);
+              }}
+              className={`
+                border rounded-lg p-4 flex items-center gap-4 cursor-pointer
+                ${isEligible ? "hover:shadow-md" : "opacity-50 cursor-not-allowed"}
+                ${isSelected ? "border-[#10662A] ring-2 ring-[#10662A]" : ""}
+              `}
+            >
+              {/* LEFT: LOGO */}
+              <div className="w-24 h-16 flex items-center justify-center flex-shrink-0">
+                <img
+                  src={bank.logo}
+                  alt={bank.name}
+                  className="max-h-14 max-w-24 object-contain"
+                />
+              </div>
+
+              {/* RIGHT: DETAILS */}
+              <div className="flex-1 text-right">
+                <p className="font-semibold text-sm">{bank.name}</p>
+
+                <p className="text-sm text-[#390A5D]">
+                  Eligible ₹ {eligibleAmount.toLocaleString()}
+                </p>
+
+                {isEligible ? (
+                  <span className="text-green-600 text-xs font-semibold">
+                    Eligible
+                  </span>
+                ) : (
+                  <span className="text-red-500 text-xs font-semibold">
+                    Not Eligible
+                  </span>
+                )}
+
+                {isSelected && (
+                  <p className="text-xs mt-1 text-[#10662A] font-semibold">
+                    Selected
+                  </p>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="flex justify-between mt-8">
+        <button
+          onClick={() => setStep(1)}
+          className="border border-[#10662A] text-[#10662A] px-6 py-2 rounded-lg"
+        >
+          Back
+        </button>
+
+        <button
+          onClick={() => {
+            if (!selectedBank) {
+              alert("Please select a bank to continue");
+              return;
+            }
+            setStep(2);
+          }}
+          className="bg-[#10662A] hover:bg-[#0d5221] text-white px-8 py-3 rounded-lg font-semibold"
+        >
+          Continue to Upload Documents
+        </button>
+      </div>
+
+    </div>
+  </section>
 )}
-
-                    </div>
-
-                    <div className="w-20 h-10 flex items-center justify-center">
-                      <img
-                        src={bank.logo}
-                        alt={bank.name}
-                        className="max-h-10 object-contain"
-                      />
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            <div className="flex justify-between mt-8">
-              <button
-                onClick={() => setStep(1)}
-                className="border border-[#10662A] text-[#10662A] px-6 py-2 rounded-lg"
-              >
-                Back
-              </button>
-
-              <button
-                onClick={() => setStep(2)}
-                className="bg-[#10662A] hover:bg-[#0d5221] text-white px-8 py-3 rounded-lg font-semibold"
-              >
-                Continue to Upload Documents
-              </button>
-            </div>
-          </div>
-        </section>
-      )}
-
       {/* ================= STEP 2 : UPLOAD ================= */}
       {step === 2 && (
         <section className="max-w-4xl mx-auto mt-4 px-4 pb-16">
@@ -1132,7 +1159,7 @@ if (form.product === "Education Loan" && !form.courseFee) {
           <div className="bg-white rounded-xl border shadow p-8 text-center space-y-6">
 
             <div className="flex justify-center">
-              <div className="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center">
+              <div className="w-20 h-20 rounded-full mt-8 bg-green-100 flex items-center justify-center">
                 <span className="text-3xl">🎉</span>
               </div>
             </div>
