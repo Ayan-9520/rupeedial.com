@@ -33,6 +33,8 @@ import TermsAndConditions from "./pages/TermsAndConditions";
 import RefundPolicy from "./pages/RefundPolicy";
 import LeadForm from "./pages/LeadForm";
 import ScrollToTop from "./components/layout/ScrollToTop";
+import LoanProductPage from "./components/loans/LoanProductPage";
+import { loanProductRoutes } from "./data/loanProductPages";
 
 // BLOG PAGES
 
@@ -60,6 +62,13 @@ const App: React.FC = () => {
             <Route path="/credit-cards" element={<CreditCards />} />
             <Route path="/auto-loan" element={<AutoLoan />} />
             <Route path="/machinery-loan" element={<MachineryLoan />} />
+            {loanProductRoutes.map(({ path, config }) => (
+              <Route
+                key={path}
+                path={path}
+                element={<LoanProductPage config={config} />}
+              />
+            ))}
              <Route path="/education-loan" element={<EducationLoan />} />
              <Route path="/expert" element={<Expert />} />
                <Route path="/check-eligibility" element={<Eligibility />} />
