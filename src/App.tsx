@@ -1,7 +1,9 @@
 // src/App.tsx
 import React from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-
+import ChatBot from "./components/ChatBot";
+import LoanMISDashboard from "./components/LoanMISDashboard";
+import Newsletter from "./components/Newsletter";
 import Header from "./components/layout/Header";
 import Footer from "./components/layout/Footer";
 
@@ -83,12 +85,17 @@ const App: React.FC = () => {
 <Route path="/blog" element={<Navigate to="/blog/auto-loan" replace />} />
 
 
-
+<Route path="/mis" element={<LoanMISDashboard />} />
 
           </Routes>
+          
         </div>
-
+<ChatBot />
         {/* Common footer – har page pe same */}
+      <div className="mt-8">
+  <Newsletter />
+</div>
+
         <Footer />
       </div>
     </BrowserRouter>

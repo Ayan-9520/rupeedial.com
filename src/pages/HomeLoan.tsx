@@ -43,6 +43,7 @@ interface LoanDetails {
   pan?: string;
   age?: number;
 cibilScore?: number;
+ propertyValue: number;
 }
 
 interface Offer {
@@ -316,7 +317,7 @@ return Math.round(
     const income = Number(form.formMonthlyIncome || 0);
     const existingEmi = Number(form.existingEmi || 0);
 
-    if (!propertyValue || !income) return 0;
+if (propertyValue <= 0 || income <= 0) return 0;
 
     // LTV rule (bank)
    const ltvLoan = propertyValue * PROPERTY_LOAN_PERCENT;
@@ -340,9 +341,10 @@ if (form.employmentType === "professional") foir = 0.65;
     let finalLoan = Math.min(ltvLoan, incomeBasedLoan);
 // CIBIL impact
 const cibil = Number(form.cibilScore || 0);
-if (cibil < 650) return 0;
-if (cibil < 700) finalLoan *= 0.8;
-if (cibil > 750) finalLoan *= 1.1;
+if (cibil < 600) finalLoan *= 0.5;
+else if (cibil < 650) finalLoan *= 0.7;
+else if (cibil < 700) finalLoan *= 0.8;
+else if (cibil > 750) finalLoan *= 1.1;
 
 // Age impact
 const age = Number(form.age || 0);
@@ -371,7 +373,7 @@ if (cibil < 700) {
 }
   const filteredOffers = useMemo(() => {
     let list = filteredBanks.map((o) => {
-   const age = Number(form.age || 30);
+  const age = Number(form.age || 30);
 const maxTenure = Math.max(60 - age, 5) * 12;
 const tenure = Math.min(maxTenure, 360);
      const cibil = loanDetails?.cibilScore ?? 700;
@@ -517,13 +519,16 @@ const selectClass = (field: string) => {
     const panRegex = /^[A-Z]{5}[0-9]{4}[A-Z]$/i;
     const aadhaarRegex = /^\d{12}$/;
 
-    const propertyValueNum = Number(form.propertyValue || 0);
-    const formIncome = Number(form.formMonthlyIncome || 0);
-    if (!form.propertyValue || propertyValueNum < 500000){
-      newErrors.propertyValue =
-       "Minimum property value must be ₹5,00,000";
-    }
+   const propertyValueNum = Number(form.propertyValue);
 
+if (!form.propertyValue || isNaN(propertyValueNum)) {
+  newErrors.propertyValue = "Property value is required";
+} else if (propertyValueNum < 500000) {
+  newErrors.propertyValue = "Minimum property value must be ₹5,00,000";
+}
+if (!CITY_LIST.includes(form.city)) {
+  newErrors.city = "Please select a valid city from list";
+}
  if (!form.purpose) {
   newErrors.purpose = "Please select loan purpose";
 }
@@ -576,11 +581,11 @@ if (!form.loanAmount || loanAmountNum <= 0) {
 
 
 
-
-    if (!form.formMonthlyIncome || formIncome < 15000)
-      newErrors.formMonthlyIncome =
-        "Please enter your monthly income (minimum ₹15,000).";
-
+if (!form.formMonthlyIncome || Number(form.formMonthlyIncome) < 15000) {
+  newErrors.formMonthlyIncome =
+    "Please enter your monthly income (minimum ₹15,000).";
+}
+      
     if (!form.companyType) newErrors.companyType = "Please select company type";
 
     if (!form.workExperience)
@@ -608,18 +613,7 @@ if (!form.loanAmount || loanAmountNum <= 0) {
     const loanAmountNum = Number(form.loanAmount || 0);
     const existingEmiNum = Number(form.existingEmi || 0);
 
-    const formIncome = Number(form.formMonthlyIncome || 0);
-   if (form.loanAmount && Number(form.loanAmount) > maxLoan) {
-  alert(
-    `❌ Loan not eligible
 
-Max eligible: ₹${maxLoan.toLocaleString("en-IN")}
-Entered: ₹${Number(form.loanAmount).toLocaleString("en-IN")}
-
-👉 Please reduce loan amount`
-  );
-  return;
-}
 
 
     
@@ -651,7 +645,7 @@ Entered: ₹${Number(form.loanAmount).toLocaleString("en-IN")}
       city: form.city,
       employmentType: form.employmentType,
 
-      formMonthlyIncome: formIncome,
+    formMonthlyIncome: Number(form.formMonthlyIncome || 0),
       existingEmi: existingEmiNum,
       companyType: form.companyType,
       workExperience: form.workExperience,
@@ -660,6 +654,7 @@ Entered: ₹${Number(form.loanAmount).toLocaleString("en-IN")}
       pan: form.pan ? form.pan.trim().toUpperCase() : undefined,
       age: Number(form.age),
 cibilScore: Number(form.cibilScore),
+propertyValue: parseFloat(form.propertyValue) || 0,
     };
 
     setLoanDetails(details);
@@ -702,19 +697,17 @@ cibilScore: Number(form.cibilScore),
     });
   };
 
-
-
-  // generate a client-side lead id: RF-PL-YYYYMMDD-XXXXXX
-  const generateClientLeadId = (): string => {
-    const now = new Date();
-    const y = now.getFullYear().toString();
-    const m = String(now.getMonth() + 1).padStart(2, "0");
-    const d = String(now.getDate()).padStart(2, "0");
-    const rand = Math.floor(100000 + Math.random() * 900000);
-    return `RF-PL-${y}${m}${d}-${rand}`;
-  };
-
   const handleSubmitApplication = async (): Promise<void> => {
+    if (!loanDetails) {
+  alert("Loan details missing");
+  return;
+}
+
+
+if (selectedBanks.length === 0) {
+  alert("Please select at least one bank");
+  return;
+}
     if (!agreeAppTerms) {
       alert("Please agree to the terms and conditions.");
       return;
@@ -756,6 +749,7 @@ cibilScore: Number(form.cibilScore),
       uploaded.other.forEach((file) => formData.append("other[]", file));
 
       const res = await fetch(
+        
         "https://rupeedial.com/rupeedial-backend/public/index.php?action=home-loan/apply",
         {
           method: "POST",
@@ -767,25 +761,28 @@ cibilScore: Number(form.cibilScore),
       const raw = await res.text();
       console.log("RAW RESPONSE:", raw);
 
+
       let json: BackendResponse | null = null;
-      try {
-        json = raw ? (JSON.parse(raw) as BackendResponse) : null;
-      } catch (e: unknown) {
-        console.error(e);
-        throw new Error(
-          `Server sent invalid JSON. Status: ${res.status}. Body: ${raw}`
-        );
-      }
+
+try {
+  json = raw ? JSON.parse(raw) : null;
+} catch {
+  throw new Error("Invalid server response");
+}
 
 
       console.log("API Response:", json);
 
-      if (!res.ok || !json || json.success === false) {
-        throw new Error(json?.message || "Something went wrong");
-      }
+   if (!json || json.success === false) {
+  throw new Error(json?.message || `Server error: ${res.status}`);
+}
 
       // Success – backend leadId ya client-side fallback
-      const finalLeadId = json.leadId || generateClientLeadId();
+    if (!json.leadId) {
+  throw new Error("Lead ID missing from server");
+}
+
+const finalLeadId = json.leadId;
       setLeadId(finalLeadId);
 
       setStep(4);
@@ -1025,9 +1022,10 @@ const reasons = [
                       <label className="text-xs font-semibold text-[#390A5D]">
                         Property Value (₹) *
                       </label>
-                      <input
-                        type="number"
-                        id="propertyValue"
+                     <input
+  type="number"
+  id="propertyValue"
+  min={500000}
                         className={inputClass("propertyValue")}
                         value={form.propertyValue}
                         onChange={handleInputChange}
@@ -1771,7 +1769,7 @@ ${isSelected ? "border-[#10662A]" : "border-slate-200 hover:border-[#10662A]"}`}
                               {/* EMI */}
                               <div className="w-full md:w-[20%]">
                                 <div className="text-[11px] text-slate-500">
-                                  Indicative EMI (30 yrs)
+                                 Indicative EMI (Based on age)
                                 </div>
 
 

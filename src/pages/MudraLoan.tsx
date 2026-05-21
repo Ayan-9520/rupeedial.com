@@ -286,7 +286,7 @@ const handleFinalSubmit = async () => {
 
   try {
     const res = await fetch(
-      "https://rupeedial.com/rupeedial-backend/public/api/index.php?action=mudra-loan/apply",
+      "https://rupeedial.com/rupeedial-backend/public/index.php?action=mudra-loan/apply",
       {
         method: "POST",
         headers: {
