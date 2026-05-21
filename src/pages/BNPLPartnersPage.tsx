@@ -6,7 +6,7 @@ import snapmint from "../assets/bnpl/Snapmint.png";
 import lazypay from "../assets/bnpl/LazyPay.png";
 import simpl from "../assets/bnpl/Simpl.jfif";
 import zestmoney from "../assets/bnpl/ZestMoney.jfif";
-import cashe from "../assets/bnpl/CASHe.jfif";
+
 import moneytap from "../assets/bnpl/MoneyTap.jfif";
 import kreditbee from "../assets/bnpl/KreditBee.png";
 import paysense from "../assets/bnpl/PaySense.jfif";
@@ -18,7 +18,7 @@ const lenders = [
   { name: "LazyPay", logo: lazypay, amount: "₹2K – ₹1L" },
   { name: "Simpl", logo: simpl, amount: "₹500 – ₹20K" },
   { name: "ZestMoney", logo: zestmoney, amount: "₹3K – ₹2L" },
-  { name: "CASHe", logo: cashe, amount: "₹5K – ₹4L" },
+
   { name: "MoneyTap", logo: moneytap, amount: "₹10K – ₹5L" },
   { name: "KreditBee", logo: kreditbee, amount: "₹1K – ₹5L" },
   { name: "PaySense", logo: paysense, amount: "₹5K – ₹5L" },
@@ -97,7 +97,7 @@ and get fast approvals with a fully digital process.
 <img src={kreditbee} className="bg-white border p-4 rounded-lg shadow"/>
 <img src={fibe} className="bg-white border p-4 rounded-lg shadow"/>
 <img src={moneytap} className="bg-white border p-4 rounded-lg shadow"/>
-<img src={cashe} className="bg-white border p-4 rounded-lg shadow"/>
+
 
 </div>
 
