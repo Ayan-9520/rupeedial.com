@@ -1,105 +1,19 @@
-import React, { useState } from "react";
-
-const associateTypes = [
-  "Franchise Partner",
-  
-  "Channel Partner",
-  "Referral Partner",
-];
-
-const employeeTypes = [
-  "Sales Team",
-  "IT Team",
-  "Human Resources (HR)",
-  "Operations Team",
-  "Credit Processing",
-  "Customer Support",
-  "Compliance Team",
-  "Admin Team",
-];
+import React, { useEffect, useState } from "react";
+import { CRM_APP_URL } from "../data/partnerPlans";
 
 const RupeeDialConnect: React.FC = () => {
   const [activeTab, setActiveTab] = useState<"associate" | "employee">(
     "associate"
   );
-  const [userType, setUserType] = useState("");
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
-const [error, setError] = useState("");
-const [loggingIn, setLoggingIn] = useState(false);
-const [showPassword, setShowPassword] = useState(false);
 
-const handleLogin = async () => {
-  setError("");
+  useEffect(() => {
+    document.title = "Login | RupeeDial Connect CRM";
+  }, []);
 
-  if (!userType || !username || !password) {
-    setError("Please fill all required fields.");
-    return;
-  }
-
-  const isMobile = /^[0-9]{10}$/.test(username);
-  const isEmail = /\S+@\S+\.\S+/.test(username);
-
-  if (!isMobile && !isEmail) {
-    setError("Enter valid mobile or email.");
-    return;
-  }
-
-  try {
-    setLoggingIn(true);
-
-    const res = await fetch("https://crm.rupeedial.com/api/login", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        loginType: activeTab,
-        role: userType,
-        username,
-        password,
-      }),
-    });
-
-    const data = await res.json();
-
-    if (!res.ok || !data.success) {
-      throw new Error(data.message || "Login failed");
-    }
-
-
-
-// ✅ Save token
-localStorage.setItem("crm_token", data.token);
-
-// ✅ Save user
-localStorage.setItem("crm_user", JSON.stringify(data.user));
-
-// ✅ VALIDATIONS (ORDER FIXED)
-if (!data.user) {
-  throw new Error("Invalid user data from server");
-}
-
-if (!data.user.role) {
-  throw new Error("User role missing");
-}
-
-if (!data.user.type) {
-  throw new Error("User type missing");
-}
-
-if (data.user.status !== "active") {
-  throw new Error("Your account is not approved yet");
-}
-
-// ✅ SINGLE DASHBOARD (REAL CRM FLOW)
-window.location.href = "https://crm.rupeedial.com/dashboard";
-  } catch (err: any) {
-    setError(err.message || "Server error");
-  } finally {
-    setLoggingIn(false);
-  }
-};
+  // CRM keeps its session on its own domain, so sign-in must happen there.
+  const handleLogin = () => {
+    window.location.href = `${CRM_APP_URL}/auth?next=/dashboard`;
+  };
 const handleRegister = () => {
   if (activeTab === "associate") {
     window.location.href = "/partner-login";   // Partner registration page
@@ -206,10 +120,7 @@ const handleRegister = () => {
                     ? "bg-green-600 text-white shadow"
                     : "text-green-700"
                 }`}
-                onClick={() => {
-                  setActiveTab("associate");
-                  setUserType("");
-                }}
+                onClick={() => setActiveTab("associate")}
               >
                 Partner
               </button>
@@ -219,103 +130,43 @@ const handleRegister = () => {
                     ? "bg-green-600 text-white shadow"
                     : "text-green-700"
                 }`}
-                onClick={() => {
-                  setActiveTab("employee");
-                  setUserType("");
-                }}
+                onClick={() => setActiveTab("employee")}
               >
                 Employee
               </button>
             </div>
 
-            {/* User Type */}
-            <div className="mb-4">
-              <label className="text-sm font-medium">Select User Type</label>
-              <select
-                value={userType}
-                onChange={(e) => {
-  setUserType(e.target.value);
-  setError("");
-}}
-                className="mt-1 w-full rounded-xl border px-4 py-2 focus:ring-2 focus:ring-green-500"
-              >
-                <option value="">Select role</option>
-                {(activeTab === "associate"
-                  ? associateTypes
-                  : employeeTypes
-                ).map((type) => (
-                  <option key={type}>{type}</option>
-                ))}
-              </select>
+            <ul className="mb-6 space-y-3 rounded-2xl border border-green-100 bg-green-50/60 p-4 text-sm text-gray-700">
+              <li className="flex gap-2">
+                <span className="font-bold text-green-700">1.</span>
+                {activeTab === "associate"
+                  ? "Use the email you registered with as a partner (DSA)."
+                  : "Use the official email your admin created for you."}
+              </li>
+              <li className="flex gap-2">
+                <span className="font-bold text-green-700">2.</span>
+                You'll sign in securely on the RupeeDial CRM.
+              </li>
+              <li className="flex gap-2">
+                <span className="font-bold text-green-700">3.</span>
+                {activeTab === "associate"
+                  ? "New partners can log in once their application is approved."
+                  : "Access depends on your role and department."}
+              </li>
+            </ul>
+
+            <button
+              onClick={handleLogin}
+              className="w-full bg-green-600 hover:bg-green-700 text-white py-3 rounded-xl font-semibold transition shadow-lg"
+            >
+              Continue to CRM login →
+            </button>
+
+            <div className="mt-3 text-center">
+              <a href="/contact" className="text-sm text-green-700 hover:underline">
+                Forgot password? Contact support
+              </a>
             </div>
-
-            {/* Mobile / Email */}
-            <div className="mb-4">
-              <label className="text-sm font-medium">
-                Mobile Number / Email Address
-              </label>
-              <input
-                type="text"
-                value={username}
-             onChange={(e) => {
-  setUsername(e.target.value);
-  setError("");
-}}
-                className="mt-1 w-full rounded-xl border px-4 py-2 focus:ring-2 focus:ring-green-500"
-                placeholder="10-digit mobile number or email"
-
-              />
-            </div>
-
-            {/* Password */}
-            <div className="mb-6 relative">
-  <label className="text-sm font-medium">Password</label>
-  <input
-    type={showPassword ? "text" : "password"}
-    value={password}
-    onChange={(e) => {
-  setPassword(e.target.value);
-  setError("");
-}}
-    className="mt-1 w-full rounded-xl border px-4 py-2 pr-12 focus:ring-2 focus:ring-green-500"
-    placeholder="Enter your password"
-  />
-
-  {/* Show / Hide Button */}
-  <button
-    type="button"
-    onClick={() => setShowPassword((p) => !p)}
-    className="absolute right-3 top-9 text-xs text-green-700 font-semibold"
-  >
-    {showPassword ? "Hide" : "Show"}
-  </button>
-</div>
-
-{/* Forgot Password Link */}
-<div className="text-right mb-4">
-  <a
-    href="/forgot-password"
-    className="text-sm text-green-700 hover:underline"
-  >
-    Forgot Password?
-  </a>
-</div>
-
-{/* Error Message */}
-{error && (
-  <p className="text-red-600 text-sm text-center mb-4">
-    {error}
-  </p>
-)}
-
-            {/* Login Button */}
-           <button
-  onClick={handleLogin}
-disabled={loggingIn}
-  className="w-full bg-green-600 hover:bg-green-700 text-white py-3 rounded-xl font-semibold transition shadow-lg disabled:opacity-50"
->
-  {loggingIn ? "Logging in..." : "Login to CRM"}
-</button>
 
 
             {/* Register */}

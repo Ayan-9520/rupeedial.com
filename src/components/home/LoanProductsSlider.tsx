@@ -14,6 +14,7 @@ import educationloan from "../../assets/images/education-loan.png";
 
 const loanProducts = [
   { title: "MSME Business Loan up to ₹5 Crore", img: msmeLoan, points: ["working capital support","business expansion & machinery","gst / itr / bank statement"], link: "/msme-loan" },
+  { title: "Business Loan up to ₹5 Crore", img: msmeLoan, points: ["unsecured & secured options","quick processing","flexible tenure"], link: "/business-loan" },
   { title: "Mudra loan upto ₹10 lac", img: mudraLoan, points: ["shishu / kishore / tarun loan","gst / trade income","bank statement 6 months"], link: "/mudra-loan" },
   { title: "Home loan upto ₹25 cr.", img: homeLoan, points: ["income / return details","bank statement 6 months","property I.D documents"], link: "/home-loan" },
   { title: "LAP loan upto ₹10 cr.", img: lap, points: ["residential / commercial property","itr & financials","bank statement 6–12 months"], link: "/lap-loan" },

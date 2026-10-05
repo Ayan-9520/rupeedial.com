@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
+import { apiUrl } from "../../config/api";
 
 import BlogCard from "../../components/blog/BlogCard";
 import BlogProductSidebar from "../../components/blog/BlogSidebar";
@@ -26,12 +27,16 @@ export default function BlogProduct() {
 
   useEffect(() => {
     async function loadBlogs() {
+      setLoading(true);
       try {
-        /* 1️⃣ BACKEND BLOGS */
-        const res = await fetch(
-          "https://rupeedial.com/rupeedial-backend/public/index.php?action=blogs"
-        );
-        const backendBlogs = await res.json();
+        /* 1️⃣ BACKEND BLOGS — optional; static blogs still show if this fails */
+        let backendBlogs: unknown = [];
+        try {
+          const res = await fetch(apiUrl("blogs"));
+          backendBlogs = await res.json();
+        } catch {
+          backendBlogs = [];
+        }
 
         /* 2️⃣ FRONTEND BLOG MAP (9 PRODUCTS) */
         const frontendBlogMap: Record<string, any[]> = {

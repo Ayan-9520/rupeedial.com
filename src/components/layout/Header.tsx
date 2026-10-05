@@ -1,489 +1,554 @@
-// src/components/home/Header.tsx
-import React, { useState } from "react";
-import { Link } from "react-router-dom";
-import { useEffect } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
+import { Link, useLocation } from "react-router-dom";
+import {
+  ChevronDown,
+  Menu,
+  X,
+  Phone,
+  ArrowRight,
+  Home,
+  FileCheck,
+  BookOpen,
+  Info,
+  Mail,
+  LayoutGrid,
+  BadgeIndianRupee,
+  GraduationCap,
+} from "lucide-react";
+import { productMenus } from "../../data/navProducts";
+
+const joinUsLinks = [
+  { to: "/partner-login", icon: "🤝", title: "Become a Partner", desc: "CRM, LeadBoard & profile" },
+  { to: "/partners", icon: "📍", title: "Partner Directory", desc: "Find DSAs near you" },
+  { to: "/pricing", icon: "₹", title: "Partner plans", desc: "Starter · Growth · Pro" },
+  { to: "/bnpl-partners", icon: "🚀", title: "BNPL Partners", desc: "Buy now pay later" },
+  { to: "/career", icon: "💼", title: "Careers", desc: "Jobs at RupeeDial" },
+  { to: "/expert", icon: "📞", title: "Talk to Expert", desc: "Loan counselling" },
+];
+
+const DROPDOWN_CLOSE_MS = 200;
+
+const primaryNavLinks = [
+  { to: "/learn&earn", label: "Learn & Earn", icon: GraduationCap, exact: true },
+  { to: "/leadboard", label: "LeadBoard", icon: LayoutGrid },
+  { to: "/check-eligibility", label: "Eligibility", icon: FileCheck },
+];
+
+const pricingLink = { to: "/pricing", label: "Pricing", icon: BadgeIndianRupee };
+
+
 const Header: React.FC = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
-useEffect(() => {
-  if (mobileOpen) {
-    document.body.style.overflow = "hidden";
-  } else {
-    document.body.style.overflow = "auto";
-  }
-}, [mobileOpen]);
+  const [scrolled, setScrolled] = useState(false);
+  const [mobileSection, setMobileSection] = useState<"products" | "join" | null>(null);
+  const [productsOpen, setProductsOpen] = useState(false);
+  const [joinOpen, setJoinOpen] = useState(false);
+  const productsTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const joinTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const location = useLocation();
+
+  const clearProductsTimer = () => {
+    if (productsTimer.current) clearTimeout(productsTimer.current);
+  };
+  const clearJoinTimer = () => {
+    if (joinTimer.current) clearTimeout(joinTimer.current);
+  };
+
+  const openProducts = () => {
+    clearProductsTimer();
+    clearJoinTimer();
+    setJoinOpen(false);
+    setProductsOpen(true);
+  };
+  const closeProducts = () => {
+    clearProductsTimer();
+    productsTimer.current = setTimeout(() => setProductsOpen(false), DROPDOWN_CLOSE_MS);
+  };
+
+  const openJoin = () => {
+    clearJoinTimer();
+    clearProductsTimer();
+    setProductsOpen(false);
+    setJoinOpen(true);
+  };
+  const closeJoin = () => {
+    clearJoinTimer();
+    joinTimer.current = setTimeout(() => setJoinOpen(false), DROPDOWN_CLOSE_MS);
+  };
+
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 8);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  useEffect(() => {
+    document.body.style.overflow = mobileOpen ? "hidden" : "";
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [mobileOpen]);
+
+  useEffect(() => {
+    setMobileOpen(false);
+    setMobileSection(null);
+    setProductsOpen(false);
+    setJoinOpen(false);
+  }, [location.pathname]);
+
+  useEffect(
+    () => () => {
+      clearProductsTimer();
+      clearJoinTimer();
+    },
+    []
+  );
+
+  const isActive = useCallback(
+    (path: string, exact?: boolean) =>
+      exact ? location.pathname === path : location.pathname.startsWith(path),
+    [location.pathname]
+  );
+
+  const toggleMobileSection = (section: "products" | "join") =>
+    setMobileSection((prev) => (prev === section ? null : section));
+
+  const desktopLinkClass = (active: boolean) =>
+    `relative py-2 text-[13px] xl:text-sm font-bold tracking-tight transition-colors duration-300 ease-premium group/link whitespace-nowrap ${
+      active ? "text-[#0D4F20]" : "text-[#0a3d1c] hover:text-[#0D4F20]"
+    }`;
+
+  const DesktopNavLink = ({
+    to,
+    label,
+    exact,
+  }: {
+    to: string;
+    label: string;
+    exact?: boolean;
+  }) => {
+    const active = isActive(to, exact);
+    return (
+      <Link to={to} className={desktopLinkClass(active)}>
+        {label}
+        <span
+          className={`absolute left-0 -bottom-0.5 h-[2px] rounded-full bg-gradient-to-r from-[#10662A] to-[#4ade80] transition-all duration-300 ease-premium ${
+            active ? "w-full opacity-100" : "w-0 opacity-0 group-hover/link:w-full group-hover/link:opacity-100"
+          }`}
+        />
+      </Link>
+    );
+  };
+
+  const DropdownTrigger = ({ label, open }: { label: string; open: boolean }) => (
+    <button
+      type="button"
+      className={`${desktopLinkClass(open)} inline-flex items-center gap-1`}
+      aria-haspopup="true"
+      aria-expanded={open}
+    >
+      {label}
+      <ChevronDown
+        className={`w-3.5 h-3.5 transition-transform duration-300 ease-premium ${
+          open ? "rotate-180" : ""
+        }`}
+      />
+      <span
+        className={`absolute left-0 -bottom-0.5 h-[2px] rounded-full bg-[#10662A] transition-all duration-300 ease-premium ${
+          open ? "w-full" : "w-0"
+        }`}
+      />
+    </button>
+  );
+
+  const mobileLinkClass = (active: boolean) =>
+    `flex items-center gap-3 rounded-xl px-4 py-3.5 text-[15px] font-medium transition-all duration-200 ${
+      active
+        ? "bg-gradient-to-r from-[#E8F7EC] to-[#f0fdf4] text-[#0D4F20] shadow-sm ring-1 ring-[#10662A]/15"
+        : "text-slate-700 hover:bg-[#f5fcf7] active:scale-[0.99]"
+    }`;
+
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 bg-[#B0E9B2]/95 backdrop-blur-xl border-b border-[#cfe7d5] shadow-[0_4px_20px_rgba(16,102,42,0.08)]">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6">
-        <div className="flex items-center justify-between h-[74px]">
-          
-          {/* Logo */}
-          <Link to="/" className="flex items-center gap-2" aria-label="Rupeedial home">
-           <img
-  src="/rupeediallogo.png"
-  alt="Rupeedial"
-  className="h-14 md:h-[72px] w-auto object-contain transition-all duration-300"
-/>
+    <>
+      <header
+        className={`site-header fixed inset-x-0 top-0 z-[90] overflow-visible transition-shadow duration-300 ${
+          scrolled
+            ? "border-b border-[#b8dfc0] bg-white shadow-[0_4px_20px_rgba(16,102,42,0.1)]"
+            : "border-b border-[#a8d4b0] bg-[#EAF8EC] shadow-[0_2px_12px_rgba(16,102,42,0.06)]"
+        }`}
+      >
+        <div className="mx-auto grid h-[var(--header-h)] max-w-7xl grid-cols-[auto_1fr_auto] items-center gap-3 px-4 sm:px-6 lg:px-8">
+          {/* Logo — oversized + clipped so wordmark matches menu weight (PNG has tagline padding) */}
+          <Link
+            to="/"
+            className="group/logo relative z-10 flex h-full shrink-0 items-center overflow-hidden"
+            aria-label="RupeeDial home"
+          >
+            <img
+              src="/rupeediallogo.png"
+              alt="RupeeDial"
+              className="h-[165%] w-auto max-w-[min(260px,48vw)] object-contain object-left transition-transform duration-300 group-hover/logo:scale-[1.03] sm:max-w-[300px]"
+            />
           </Link>
 
-          {/* Desktop Navigation */}
-          <nav className="hidden lg:flex items-center gap-5 xl:gap-4 text-sm font-medium text-slate-800">
-            <Link to="/" className="text-[#390A5D]">
+          {/* Desktop nav — centered column */}
+          <nav
+            className="hidden min-w-0 items-center justify-center gap-2.5 xl:flex 2xl:gap-3.5"
+            aria-label="Main navigation"
+          >
+            <DesktopNavLink to="/" label="Home" exact />
+
+            <div className="relative" onMouseEnter={openProducts} onMouseLeave={closeProducts}>
+              <DropdownTrigger label="Products" open={productsOpen} />
+            </div>
+
+            {primaryNavLinks.map((link) => (
+              <DesktopNavLink
+                key={link.to}
+                to={link.to}
+                label={link.label}
+                exact={"exact" in link ? link.exact : undefined}
+              />
+            ))}
+
+            <div className="relative" onMouseEnter={openJoin} onMouseLeave={closeJoin}>
+              <DropdownTrigger label="Partners" open={joinOpen} />
+              {joinOpen && (
+                <div className="absolute left-1/2 top-full z-[110] w-[280px] -translate-x-1/2 pt-3">
+                  <div className="overflow-hidden rounded-xl border border-[#cfe7d5] bg-white p-2 shadow-[0_16px_48px_rgba(16,102,42,0.18)]">
+                    {joinUsLinks.map((item) => (
+                      <Link
+                        key={item.to}
+                        to={item.to}
+                        className="flex items-center gap-3 rounded-lg px-3 py-2.5 transition-colors hover:bg-[#E8F7EC]"
+                      >
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#dff3e5] text-base">
+                          {item.icon}
+                        </span>
+                        <span className="min-w-0">
+                          <span className="block text-sm font-semibold text-[#10662A]">{item.title}</span>
+                          <span className="block truncate text-[11px] text-slate-600">{item.desc}</span>
+                        </span>
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <DesktopNavLink to={pricingLink.to} label={pricingLink.label} />
+          </nav>
+
+          {/* Desktop CTAs */}
+          <div className="hidden shrink-0 items-center justify-end gap-2 xl:flex">
+            <a
+              href="tel:+917982953129"
+              className="hidden 2xl:inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs font-semibold text-[#10662A] transition-colors hover:bg-[#E8F7EC]"
+            >
+              <Phone className="h-3.5 w-3.5" />
+              +91 79829 53129
+            </a>
+            <Link
+              to="/check-eligibility"
+              className="group/cta relative overflow-hidden rounded-xl bg-gradient-to-r from-[#10662A] via-[#0d5a26] to-[#0D4F20] px-4 py-2 text-sm font-semibold text-white shadow-[0_8px_24px_rgba(16,102,42,0.3)]"
+            >
+              <span className="relative">Apply Loan</span>
+            </Link>
+            <Link
+              to="/login"
+              className="rounded-xl border-2 border-[#10662A]/70 px-4 py-2 text-sm font-semibold text-[#10662A] transition-all duration-300 hover:border-[#10662A] hover:bg-[#10662A] hover:text-white hover:shadow-md"
+            >
+              Login
+            </Link>
+          </div>
+
+          {/* Mobile / tablet menu button */}
+          <button
+            type="button"
+            aria-expanded={mobileOpen}
+            aria-controls="mobile-nav-drawer"
+            aria-label={mobileOpen ? "Close menu" : "Open menu"}
+            className="col-start-3 flex h-11 w-11 items-center justify-center justify-self-end rounded-xl border border-[#10662A]/30 bg-white text-[#10662A] shadow-sm transition-all duration-300 hover:border-[#10662A]/50 hover:bg-[#E8F7EC] active:scale-95 xl:hidden"
+            onClick={() => setMobileOpen((o) => !o)}
+          >
+            <Menu
+              className={`absolute h-5 w-5 transition-all duration-300 ${
+                mobileOpen ? "rotate-90 scale-0 opacity-0" : "rotate-0 scale-100 opacity-100"
+              }`}
+            />
+            <X
+              className={`absolute h-5 w-5 transition-all duration-300 ${
+                mobileOpen ? "rotate-0 scale-100 opacity-100" : "-rotate-90 scale-0 opacity-0"
+              }`}
+            />
+          </button>
+        </div>
+      </header>
+
+      {productsOpen && (
+        <div
+          className="fixed inset-x-0 z-[100] hidden xl:block"
+          style={{ top: "calc(var(--header-h) - 16px)" }}
+          onMouseEnter={openProducts}
+          onMouseLeave={closeProducts}
+        >
+          <div className="h-4" aria-hidden />
+          <div className="animate-nav-dropdown border-b border-[#cfe7d5] bg-white shadow-[0_12px_40px_rgba(16,102,42,0.15)]">
+            <div className="mx-auto max-w-7xl px-4 py-5 sm:px-6 lg:px-8">
+              <div className="mb-4 h-1 rounded-full bg-gradient-to-r from-[#10662A] via-[#3cb371] to-[#10662A]" />
+              <div className="grid grid-cols-2 gap-x-8 gap-y-4 lg:grid-cols-4">
+                {productMenus.map((col) => (
+                  <div key={col.title}>
+                    <h3 className="mb-2.5 border-b border-[#d8ecdd] pb-2 text-[10px] font-bold uppercase tracking-widest text-[#10662A]">
+                      {col.title}
+                    </h3>
+                    <ul className="space-y-0.5">
+                      {col.links.map((link) => (
+                        <li key={link.to}>
+                          <Link
+                            to={link.to}
+                            className={`flex items-center gap-2 rounded-lg px-2 py-1.5 text-[12px] font-medium transition-all duration-200 ${
+                              isActive(link.to)
+                                ? "bg-[#E8F7EC] text-[#0D4F20]"
+                                : "text-[#1a3d28] hover:bg-[#f0fdf4] hover:text-[#0D4F20]"
+                            }`}
+                            onClick={() => setProductsOpen(false)}
+                          >
+                            <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#10662A]" />
+                            {link.label}
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#d8ecdd] bg-[#f5fcf7] px-4 py-3">
+                <p className="text-xs text-[#390A5D]">
+                  <span className="font-bold text-[#10662A]">50+ lenders</span>
+                  <span className="text-slate-600"> · compare rates in minutes</span>
+                </p>
+                <Link
+                  to="/check-eligibility"
+                  className="inline-flex shrink-0 items-center gap-1.5 rounded-xl bg-[#10662A] px-4 py-2 text-xs font-semibold text-white shadow-md transition-all hover:bg-[#0D4F20]"
+                  onClick={() => setProductsOpen(false)}
+                >
+                  Check Eligibility
+                  <ArrowRight className="h-3.5 w-3.5" />
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Mobile drawer overlay */}
+      <div
+        className={`xl:hidden fixed inset-0 z-[55] bg-[#0a2e14]/30 backdrop-blur-[2px] transition-opacity duration-300 ${
+          mobileOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
+        }`}
+        onClick={() => setMobileOpen(false)}
+        aria-hidden={!mobileOpen}
+      />
+
+      {/* Mobile drawer panel */}
+      <aside
+        id="mobile-nav-drawer"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Mobile navigation"
+        className={`xl:hidden fixed top-0 right-0 z-[58] flex h-[100dvh] w-[min(100%,360px)] flex-col border-l border-[#cfe7d5]/80 bg-white shadow-[-8px_0_40px_rgba(16,102,42,0.12)] transition-transform duration-500 ease-premium ${
+          mobileOpen ? "translate-x-0" : "translate-x-full"
+        }`}
+      >
+        {/* Drawer header */}
+        <div className="flex shrink-0 items-center justify-between border-b border-[#e2f3e6] bg-gradient-to-r from-[#f0fdf4] to-white px-5 py-4 pt-[max(1rem,env(safe-area-inset-top))]">
+          <img
+            src="/rupeediallogo.png"
+            alt="RupeeDial"
+            className="h-14 w-auto max-w-[200px] object-contain object-left"
+          />
+          <button
+            type="button"
+            onClick={() => setMobileOpen(false)}
+            className="flex h-10 w-10 items-center justify-center rounded-xl text-[#10662A] transition-colors hover:bg-[#E8F7EC]"
+            aria-label="Close menu"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        {/* Scrollable nav */}
+        <nav className="flex-1 overflow-y-auto overscroll-contain px-4 py-4 scrollbar-hide" aria-label="Mobile navigation">
+          <div className="space-y-1">
+            <Link
+              to="/"
+              className={mobileLinkClass(isActive("/", true))}
+              onClick={() => setMobileOpen(false)}
+            >
+              <Home className="h-5 w-5 shrink-0 text-[#10662A]" />
               Home
             </Link>
 
-        
+            <div className="overflow-hidden rounded-xl border border-[#d9ebde]/80">
+              <button
+                type="button"
+                onClick={() => toggleMobileSection("products")}
+                className="flex w-full items-center justify-between px-4 py-3.5 text-left text-[15px] font-semibold text-[#10662A] transition-colors hover:bg-[#f5fcf7]"
+                aria-expanded={mobileSection === "products"}
+              >
+                <span>Products</span>
+                <ChevronDown
+                  className={`h-4 w-4 transition-transform duration-300 ${
+                    mobileSection === "products" ? "rotate-180" : ""
+                  }`}
+                />
+              </button>
+              <div
+                className={`grid transition-all duration-300 ease-premium ${
+                  mobileSection === "products" ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
+                }`}
+              >
+                <div className="overflow-hidden">
+                  <div className="space-y-2 border-t border-[#e2f3e6] bg-[#fafdfa] px-3 py-3">
+                    {productMenus.map((col) => (
+                      <div key={col.title} className="rounded-lg bg-white p-3 shadow-sm ring-1 ring-[#e2f3e6]">
+                        <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-[#10662A]">
+                          {col.title}
+                        </p>
+                        <ul className="space-y-0.5">
+                          {col.links.map((link) => (
+                            <li key={link.to}>
+                              <Link
+                                to={link.to}
+                                className={`block rounded-lg px-2.5 py-2 text-[13px] font-medium transition-colors ${
+                                  isActive(link.to)
+                                    ? "bg-[#E8F7EC] text-[#0D4F20]"
+                                    : "text-[#245233] hover:bg-[#f0fdf4]"
+                                }`}
+                                onClick={() => setMobileOpen(false)}
+                              >
+                                {link.label}
+                              </Link>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
 
-            {/* Products Dropdown */}
-            {/* Premium Products Mega Menu */}
-<div className="relative group">
+            {primaryNavLinks.map((link) => {
+              const Icon = link.icon;
+              const active = isActive(link.to, "exact" in link ? link.exact : undefined);
+              return (
+                <Link
+                  key={link.to}
+                  to={link.to}
+                  className={mobileLinkClass(active)}
+                  onClick={() => setMobileOpen(false)}
+                >
+                  <Icon className="h-5 w-5 shrink-0 text-[#10662A]" />
+                  {link.label}
+                </Link>
+              );
+            })}
 
-  <button
-    type="button"
-    className="relative inline-flex items-center gap-1 text-[#10662A] hover:text-[#0D4F20] font-semibold transition-all duration-200 after:absolute after:left-0 after:-bottom-1 after:h-[2px] after:w-0 hover:after:w-full after:bg-[#10662A] after:transition-all after:duration-300"
-  >
-    Products
-    <span className="text-[10px] mt-[2px]">▼</span>
-  </button>
+            <div className="overflow-hidden rounded-xl border border-[#d9ebde]/80">
+              <button
+                type="button"
+                onClick={() => toggleMobileSection("join")}
+                className="flex w-full items-center justify-between px-4 py-3.5 text-left text-[15px] font-semibold text-[#10662A] transition-colors hover:bg-[#f5fcf7]"
+                aria-expanded={mobileSection === "join"}
+              >
+                <span>Partners</span>
+                <ChevronDown
+                  className={`h-4 w-4 transition-transform duration-300 ${
+                    mobileSection === "join" ? "rotate-180" : ""
+                  }`}
+                />
+              </button>
+              <div
+                className={`grid transition-all duration-300 ease-premium ${
+                  mobileSection === "join" ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
+                }`}
+              >
+                <div className="overflow-hidden">
+                  <div className="space-y-1 border-t border-[#e2f3e6] bg-[#fafdfa] p-3">
+                    {joinUsLinks.map((item) => (
+                      <Link
+                        key={item.to}
+                        to={item.to}
+                        className="flex items-center gap-3 rounded-xl px-3 py-3 transition-colors hover:bg-white"
+                        onClick={() => setMobileOpen(false)}
+                      >
+                        <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#dff3e5] text-base">
+                          {item.icon}
+                        </span>
+                        <span>
+                          <span className="block text-sm font-semibold text-[#10662A]">{item.title}</span>
+                          <span className="block text-xs text-slate-500">{item.desc}</span>
+                        </span>
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
 
-  <div className="absolute left-[-110px] top-full mt-5 w-[920px] rounded-[28px] bg-white/95 backdrop-blur-xl border border-[#d7eadb] shadow-[0_20px_60px_rgba(16,102,42,0.15)] p-8 opacity-0 invisible translate-y-3 group-hover:translate-y-0 group-hover:opacity-100 group-hover:visible transition-all duration-300 z-50">
-
-    <div className="grid grid-cols-4 gap-8">
-
-      {/* Retail Loans */}
-      <div className="rounded-2xl p-2 hover:bg-[#f5fcf7] transition-all duration-300">
-        <h3 className="text-[#10662A] text-[17px] font-bold mb-6 border-b border-[#d8ecdd] pb-3">
-          Retail Loans
-        </h3>
-
-        <div className="flex flex-col gap-4 text-[14px] text-[#245233] font-medium">
-
-          <Link to="/home-loan" className="px-3 py-2 rounded-xl hover:bg-[#E8F7EC] hover:text-[#0D4F20] hover:translate-x-1 transition-all duration-200">
-            Home Loan
-          </Link>
-
-          <Link to="/personal-loan" className="px-3 py-2 rounded-xl hover:bg-[#E8F7EC] hover:text-[#0D4F20] hover:translate-x-1 transition-all duration-200">
-            Personal Loan
-          </Link>
-
-          <Link to="/auto-loan" className="px-3 py-2 rounded-xl hover:bg-[#E8F7EC] hover:text-[#0D4F20] hover:translate-x-1 transition-all duration-200">
-            Auto Loan
-          </Link>
-
-          <Link to="/education-loan" className="px-3 py-2 rounded-xl hover:bg-[#E8F7EC] hover:text-[#0D4F20] hover:translate-x-1 transition-all duration-200">
-            Education Loan
-          </Link>
-
-          <Link to="/credit-cards" className="px-3 py-2 rounded-xl hover:bg-[#E8F7EC] hover:text-[#0D4F20] hover:translate-x-1 transition-all duration-200">
-            Credit Cards
-          </Link>
-
-          <Link to="/lap-loan" className="px-3 py-2 rounded-xl hover:bg-[#E8F7EC] hover:text-[#0D4F20] hover:translate-x-1 transition-all duration-200">
-            Loan Against Property
-          </Link>
-
-          {/* Insurance moved here */}
-          <Link to="/insurance" className="px-3 py-2 rounded-xl hover:bg-[#E8F7EC] hover:text-[#0D4F20] hover:translate-x-1 transition-all duration-200">
-            Insurance
-          </Link>
-
-        </div>
-      </div>
-
-      {/* MSME Loans */}
-      <div className="rounded-2xl p-2 hover:bg-[#f5fcf7] transition-all duration-300">
-        <h3 className="text-[#10662A] text-[17px] font-bold mb-6 border-b border-[#d8ecdd] pb-3">
-          MSME Loans
-        </h3>
-
-        <div className="flex flex-col gap-4 text-[14px] text-[#245233] font-medium">
-
-          <Link to="/msme-loan" className="px-3 py-2 rounded-xl hover:bg-[#E8F7EC] hover:text-[#0D4F20] hover:translate-x-1 transition-all duration-200">
-            MSME Loan
-          </Link>
-
-          <Link to="/mudra-loan" className="px-3 py-2 rounded-xl hover:bg-[#E8F7EC] hover:text-[#0D4F20] hover:translate-x-1 transition-all duration-200">
-            Mudra Loan
-          </Link>
-
-          <Link to="/machinery-loan" className="px-3 py-2 rounded-xl hover:bg-[#E8F7EC] hover:text-[#0D4F20] hover:translate-x-1 transition-all duration-200">
-            Machinery Loan
-          </Link>
-
-          <Link to="/working-capital-loan" className="px-3 py-2 rounded-xl hover:bg-[#E8F7EC] hover:text-[#0D4F20] hover:translate-x-1 transition-all duration-200">
-            Working Capital Loan
-          </Link>
-
-          <Link to="/business-loan" className="px-3 py-2 rounded-xl hover:bg-[#E8F7EC] hover:text-[#0D4F20] hover:translate-x-1 transition-all duration-200">
-            Business Loan
-          </Link>
-
-          <Link to="/startup-business-loan" className="px-3 py-2 rounded-xl hover:bg-[#E8F7EC] hover:text-[#0D4F20] hover:translate-x-1 transition-all duration-200">
-            Startup Business Loan
-          </Link>
-
-        </div>
-      </div>
-
-      {/* Government MSME Loans */}
-      <div className="rounded-2xl p-2 hover:bg-[#f5fcf7] transition-all duration-300">
-        <h3 className="text-[#10662A] text-[17px] font-bold mb-6 border-b border-[#d8ecdd] pb-3">
-          Government MSME Loans
-        </h3>
-
-        <div className="flex flex-col gap-4 text-[14px] text-[#245233] font-medium">
-
-          <Link to="/cgtmse-loan" className="px-3 py-2 rounded-xl hover:bg-[#E8F7EC] hover:text-[#0D4F20] hover:translate-x-1 transition-all duration-200">
-            CGTMSE Loan
-          </Link>
-
-          <Link to="/pmegp-loan" className="px-3 py-2 rounded-xl hover:bg-[#E8F7EC] hover:text-[#0D4F20] hover:translate-x-1 transition-all duration-200">
-            PMEGP Loan
-          </Link>
-
-          <Link to="/standup-india" className="px-3 py-2 rounded-xl hover:bg-[#E8F7EC] hover:text-[#0D4F20] hover:translate-x-1 transition-all duration-200">
-            Stand-Up India
-          </Link>
-
-          <Link to="/subsidy-linked-msme" className="px-3 py-2 rounded-xl hover:bg-[#E8F7EC] hover:text-[#0D4F20] hover:translate-x-1 transition-all duration-200">
-            Subsidy Linked MSME
-          </Link>
-
-        </div>
-      </div>
-
-      {/* Trade Finance */}
-      <div className="rounded-2xl p-2 hover:bg-[#f5fcf7] transition-all duration-300">
-        <h3 className="text-[#10662A] text-[17px] font-bold mb-6 border-b border-[#d8ecdd] pb-3">
-          Trade Finance
-        </h3>
-
-        <div className="flex flex-col gap-4 text-[14px] text-[#245233] font-medium">
-
-          <Link to="/export-finance" className="px-3 py-2 rounded-xl hover:bg-[#E8F7EC] hover:text-[#0D4F20] hover:translate-x-1 transition-all duration-200">
-            Export Finance
-          </Link>
-
-          <Link to="/import-finance" className="px-3 py-2 rounded-xl hover:bg-[#E8F7EC] hover:text-[#0D4F20] hover:translate-x-1 transition-all duration-200">
-            Import Finance
-          </Link>
-
-          <Link to="/lc-bg" className="px-3 py-2 rounded-xl hover:bg-[#E8F7EC] hover:text-[#0D4F20] hover:translate-x-1 transition-all duration-200">
-            LC / BG
-          </Link>
-
-          <Link to="/invoice-financing" className="px-3 py-2 rounded-xl hover:bg-[#E8F7EC] hover:text-[#0D4F20] hover:translate-x-1 transition-all duration-200">
-            Invoice Financing
-          </Link>
-
-          <Link to="/cash-credit" className="px-3 py-2 rounded-xl hover:bg-[#E8F7EC] hover:text-[#0D4F20] hover:translate-x-1 transition-all duration-200">
-            Cash Credit (CC)
-          </Link>
-
-          <Link to="/overdraft" className="px-3 py-2 rounded-xl hover:bg-[#E8F7EC] hover:text-[#0D4F20] hover:translate-x-1 transition-all duration-200">
-            Overdraft (OD)
-          </Link>
-
-        </div>
-      </div>
-
-    </div>
-  </div>
-</div>
-               <Link to="/check-eligibility" className="relative text-[#10662A] hover:text-[#0D4F20] transition-all duration-200 font-semibold after:absolute after:left-0 after:-bottom-1 after:h-[2px] after:w-0 hover:after:w-full after:bg-[#10662A] after:transition-all after:duration-300">
-            Check Eligibility
+            <Link
+              to={pricingLink.to}
+              className={mobileLinkClass(isActive(pricingLink.to))}
+              onClick={() => setMobileOpen(false)}
+            >
+              <pricingLink.icon className="h-5 w-5 shrink-0 text-[#10662A]" />
+              {pricingLink.label}
             </Link>
-   <Link to="/expert" className="relative text-[#10662A] hover:text-[#0D4F20] transition-all duration-200 font-semibold after:absolute after:left-0 after:-bottom-1 after:h-[2px] after:w-0 hover:after:w-full after:bg-[#10662A] after:transition-all after:duration-300">
-            Loan  Expert
-            </Link>
- 
-          
-             
-<Link to="/learn&earn" className="relative text-[#10662A] hover:text-[#0D4F20] transition-all duration-200 font-semibold after:absolute after:left-0 after:-bottom-1 after:h-[2px] after:w-0 hover:after:w-full after:bg-[#10662A] after:transition-all after:duration-300">
-            Learn & Earn
-            </Link>
-
-         
-            
-
-           {/* join us Dropdown */}
-            {/* Premium Join Us Dropdown */}
-<div className="relative group">
-
-  <button
-    type="button"
-    className="relative inline-flex items-center gap-1 text-[#10662A] hover:text-[#0D4F20] transition-all duration-200 font-semibold after:absolute after:left-0 after:-bottom-1 after:h-[2px] after:w-0 hover:after:w-full after:bg-[#10662A] after:transition-all after:duration-300"
-  >
-    Join Us
-    <span className="mt-[1px] text-[10px]">▼</span>
-  </button>
-
-  <div className="absolute left-[-120px] top-full mt-5 w-[290px] rounded-[24px] bg-white/95 backdrop-blur-xl border border-[#d7eadb] shadow-[0_20px_60px_rgba(16,102,42,0.15)] p-4 opacity-0 invisible translate-y-3 group-hover:translate-y-0 group-hover:opacity-100 group-hover:visible transition-all duration-300 z-50">
-
-    <div className="flex flex-col gap-2">
-
-      <Link
-        to="/career"
-        className="flex items-center gap-3 px-4 py-4 rounded-2xl hover:bg-[#E8F7EC] transition-all duration-200"
-      >
-        <div className="w-9 h-9 rounded-xl bg-[#dff3e5] flex items-center justify-center text-xl">
-          💼
-        </div>
-
-        <div className="rounded-2xl p-2 hover:bg-[#f5fcf7] transition-all duration-300">
-          <h4 className="text-[#10662A] font-semibold text-[14px]">
-            Career
-          </h4>
-
-          <p className="text-[13px] text-slate-500">
-            Explore jobs & opportunities
-          </p>
-        </div>
-      </Link>
-
-      <Link
-        to="/partner-login"
-        className="flex items-center gap-3 px-4 py-4 rounded-2xl hover:bg-[#E8F7EC] transition-all duration-200"
-      >
-        <div className="w-9 h-9 rounded-xl bg-[#dff3e5] flex items-center justify-center text-xl">
-          🤝
-        </div>
-
-        <div className="rounded-2xl p-2 hover:bg-[#f5fcf7] transition-all duration-300">
-          <h4 className="text-[#10662A] font-semibold text-[14px]">
-            Become a Partner
-          </h4>
-
-          <p className="text-[13px] text-slate-500">
-            Grow with RupeeDial network
-          </p>
-        </div>
-      </Link>
-
-      <Link
-        to="/bnpl-partners"
-        className="flex items-center gap-3 px-4 py-4 rounded-2xl hover:bg-[#E8F7EC] transition-all duration-200"
-      >
-        <div className="w-9 h-9 rounded-xl bg-[#dff3e5] flex items-center justify-center text-xl">
-          🚀
-        </div>
-
-        <div className="rounded-2xl p-2 hover:bg-[#f5fcf7] transition-all duration-300">
-          <h4 className="text-[#10662A] font-semibold text-[14px]">
-            BNPL
-          </h4>
-
-          <p className="text-[13px] text-slate-500">
-            Buy now pay later partners
-          </p>
-        </div>
-      </Link>
-
-    </div>
-  </div>
-</div>
-           <Link to="/blog" className="relative text-[#10662A] hover:text-[#0D4F20] transition-all duration-200 font-semibold after:absolute after:left-0 after:-bottom-1 after:h-[2px] after:w-0 hover:after:w-full after:bg-[#10662A] after:transition-all after:duration-300">
-            Blog
-            </Link>
-   <Link to="/about" className="relative text-[#10662A] hover:text-[#0D4F20] transition-all duration-200 font-semibold after:absolute after:left-0 after:-bottom-1 after:h-[2px] after:w-0 hover:after:w-full after:bg-[#10662A] after:transition-all after:duration-300">
+            <Link to="/about" className={mobileLinkClass(isActive("/about"))} onClick={() => setMobileOpen(false)}>
+              <Info className="h-5 w-5 shrink-0 text-[#10662A]" />
               About
             </Link>
-            
-          <Link to="/contact" className="relative text-[#10662A] hover:text-[#0D4F20] transition-all duration-200 font-semibold after:absolute after:left-0 after:-bottom-1 after:h-[2px] after:w-0 hover:after:w-full after:bg-[#10662A] after:transition-all after:duration-300">
-              Contact Us
+            <Link to="/contact" className={mobileLinkClass(isActive("/contact"))} onClick={() => setMobileOpen(false)}>
+              <Mail className="h-5 w-5 shrink-0 text-[#10662A]" />
+              Contact
             </Link>
+            <Link to="/blog" className={mobileLinkClass(isActive("/blog"))} onClick={() => setMobileOpen(false)}>
+              <BookOpen className="h-5 w-5 shrink-0 text-[#10662A]" />
+              Blog
+            </Link>
+          </div>
+        </nav>
 
-           <div className="flex items-center gap-2">
-
-  <Link
-    to="/check-eligibility"
-    className="px-4 py-2 rounded-xl bg-gradient-to-r from-[#10662A] to-[#0D4F20] shadow-[0_10px_25px_rgba(16,102,42,0.22)] text-white text-sm font-semibold hover:bg-[#0D4F20] transition-colors"
-  >
-    Apply Loan
-  </Link>
-
-  <Link
-  to="/login"
-  className="px-4 py-2 rounded-xl border border-[#10662A] text-[#10662A] text-sm font-semibold hover:bg-[#10662A] hover:text-white transition-all duration-200"
->
-  Login
-</Link>
-
-</div>
-            
-          </nav>
-
-          {/* Mobile burger button */}
-          <button
-            type="button"
-           className="lg:hidden inline-flex items-center justify-center w-10 h-10 border border-slate-300 rounded-lg hover:bg-slate-100 transition"
-            onClick={() => setMobileOpen(!mobileOpen)}
+        {/* Sticky footer CTAs */}
+        <div className="shrink-0 space-y-2.5 border-t border-[#e2f3e6] bg-gradient-to-t from-[#f0fdf4] to-white p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+          <a
+            href="tel:+917982953129"
+            className="flex items-center justify-center gap-2 rounded-xl border border-[#cfe7d5] bg-white py-3 text-sm font-semibold text-[#10662A] transition-colors hover:bg-[#E8F7EC]"
           >
-            <span className="sr-only">Open Menu</span>
-            <div className="space-y-1">
-              <span className="block w-4 h-[2px] bg-slate-900"></span>
-              <span className="block w-4 h-[2px] bg-slate-900"></span>
-              <span className="block w-4 h-[2px] bg-slate-900"></span>
-            </div>
-          </button>
-
+            <Phone className="h-4 w-4" />
+            Call +91 79829 53129
+          </a>
+          <Link
+            to="/check-eligibility"
+            className="flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#10662A] to-[#0D4F20] py-3.5 text-sm font-semibold text-white shadow-lg transition-transform active:scale-[0.98]"
+            onClick={() => setMobileOpen(false)}
+          >
+            Apply Loan
+            <ArrowRight className="h-4 w-4" />
+          </Link>
+          <Link
+            to="/login"
+            className="flex items-center justify-center rounded-xl border-2 border-[#10662A] py-3 text-sm font-semibold text-[#10662A] transition-all hover:bg-[#10662A] hover:text-white"
+            onClick={() => setMobileOpen(false)}
+          >
+            Login
+          </Link>
         </div>
-      </div>
-
-{/* Mobile menu */}
-{mobileOpen && (
-  <div className="lg:hidden fixed inset-x-0 top-16 bottom-0 z-40 bg-white/95 backdrop-blur-xl overflow-y-auto">
-    <nav className="px-5 py-6 flex flex-col gap-3 text-base font-medium text-slate-800">
-
-      {/* Home */}
-      <Link to="/" className="py-2" onClick={() => setMobileOpen(false)}>
-        Home
-      </Link>
-
-      {/* Products */}
-  {/* Products */}
-<details className="py-2 border-b border-slate-200">
-
-  <summary className="cursor-pointer list-none flex items-center justify-between font-semibold text-[#10662A]">
-    <span>Products</span>
-    <span className="text-[11px]">▼</span>
-  </summary>
-
-  <div className="mt-4 space-y-5">
-
-    {/* Retail */}
-    <div className="bg-[#f3fbf5] border border-[#d9ebde] shadow-[0_10px_30px_rgba(16,102,42,0.08)] rounded-xl p-4">
-      <h3 className="font-bold text-[#10662A] mb-3">
-        Retail Loans
-      </h3>
-
-      <div className="flex flex-col gap-3 text-[14px] text-[#10662A]">
-
-        <Link to="/home-loan" onClick={() => setMobileOpen(false)}>Home Loan</Link>
-
-        <Link to="/personal-loan" onClick={() => setMobileOpen(false)}>Personal Loan</Link>
-
-        <Link to="/auto-loan" onClick={() => setMobileOpen(false)}>Auto Loan</Link>
-
-        <Link to="/education-loan" onClick={() => setMobileOpen(false)}>Education Loan</Link>
-
-        <Link to="/credit-cards" onClick={() => setMobileOpen(false)}>Credit Cards</Link>
-
-        <Link to="/lap-loan" onClick={() => setMobileOpen(false)}>Loan Against Property</Link>
-
-        <Link to="/insurance" onClick={() => setMobileOpen(false)}>Insurance</Link>
-
-      </div>
-    </div>
-
-    {/* MSME */}
-    <div className="bg-[#f3fbf5] border border-[#d9ebde] shadow-[0_10px_30px_rgba(16,102,42,0.08)] rounded-xl p-4">
-      <h3 className="font-bold text-[#10662A] mb-3">
-        MSME Loans
-      </h3>
-
-      <div className="flex flex-col gap-3 text-[14px] text-[#10662A]">
-
-        <Link to="/msme-loan" onClick={() => setMobileOpen(false)}>MSME Loan</Link>
-
-        <Link to="/mudra-loan" onClick={() => setMobileOpen(false)}>Mudra Loan</Link>
-
-        <Link to="/machinery-loan" onClick={() => setMobileOpen(false)}>Machinery Loan</Link>
-
-        <Link to="/working-capital-loan" onClick={() => setMobileOpen(false)}>Working Capital Loan</Link>
-
-      </div>
-    </div>
-
-    {/* Govt MSME */}
-    <div className="bg-[#f3fbf5] border border-[#d9ebde] shadow-[0_10px_30px_rgba(16,102,42,0.08)] rounded-xl p-4">
-      <h3 className="font-bold text-[#10662A] mb-3">
-        Government MSME Loans
-      </h3>
-
-      <div className="flex flex-col gap-3 text-[14px] text-[#10662A]">
-
-        <Link to="/cgtmse-loan" onClick={() => setMobileOpen(false)}>CGTMSE Loan</Link>
-
-        <Link to="/pmegp-loan" onClick={() => setMobileOpen(false)}>PMEGP Loan</Link>
-
-        <Link to="/standup-india" onClick={() => setMobileOpen(false)}>Stand-Up India</Link>
-
-      </div>
-    </div>
-
-  </div>
-</details>
-
-      {/* Check Eligibility */}
-      <Link to="/check-eligibility" className="py-2" onClick={() => setMobileOpen(false)}>
-        Check Eligibility
-      </Link>
-
-      {/* Loan Expert */}
-      <Link to="/expert" className="py-2" onClick={() => setMobileOpen(false)}>
-        Loan Expert
-      </Link>
-
-      {/* Learn & Earn */}
-      <Link to="/learn&earn" className="py-2" onClick={() => setMobileOpen(false)}>
-        Learn & Earn
-      </Link>
-
-            {/* Join Us */}
-      <details className="py-2">
-        <summary className="cursor-pointer list-none flex items-center justify-between">
-          <span>Join Us</span>
-          <span className="text-[10px]">▼</span>
-        </summary>
-
-        <div className="mt-2 ml-3 flex flex-col gap-2 text-[14px] text-[#10662A]">
-          <Link to="/career" onClick={() => setMobileOpen(false)}>Career</Link>
-          <Link to="/partner-login" onClick={() => setMobileOpen(false)}>Become a Partner</Link>
-          
-        </div>
-      </details>
-
-      {/* Blog */}
-      <Link to="/blog" className="py-2" onClick={() => setMobileOpen(false)}>
-        Blog
-      </Link>
-
-      {/* About */}
-      <Link to="/about" className="py-2" onClick={() => setMobileOpen(false)}>
-        About
-      </Link>
- <Link to="/bnpl-partners" className="py-2" onClick={() => setMobileOpen(false)}>
-        BNPL
-      </Link>
-      {/* Contact */}
-      <Link to="/contact" className="py-2" onClick={() => setMobileOpen(false)}>
-        Contact Us
-      </Link>
-
-      {/* CTA Buttons */}
-      <div className="flex flex-col gap-3 pt-4">
-        <Link
-          to="/check-eligibility"
-          className="inline-flex items-center justify-center px-4 py-2 rounded-md bg-[#10662A] text-white text-sm font-semibold hover:bg-[#0D4F20] transition-colors"
-          onClick={() => setMobileOpen(false)}
-        >
-          Apply Loan
-        </Link>
-
-        <Link
-          to="/login"
-          className="inline-flex items-center justify-center px-4 py-2 rounded-md border border-[#10662A] text-[#10662A] text-sm font-semibold hover:bg-[#10662A] hover:text-white transition-colors"
-          onClick={() => setMobileOpen(false)}
-        >
-          Login
-        </Link>
-      </div>
-
-    </nav>
-  </div>
-)}
-
-    </header>
+      </aside>
+    </>
   );
 };
 

@@ -1,5 +1,6 @@
 // src/pages/Insurance.tsx
 import React, { useState, useEffect } from "react";
+import { apiUrl } from "../config/api";
 import insurance from "../assets/images/insurance.png";
 import jsPDF from "jspdf";
 
@@ -114,6 +115,7 @@ const InsurancePage: React.FC = () => {
 
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
   const [loadingQuotes, setLoadingQuotes] = useState(false);
+  const [submittingApp, setSubmittingApp] = useState(false);
   const [referenceId, setReferenceId] = useState<string>("");
   const [userDetails, setUserDetails] = useState<UserDetails>({
     fullName: "",
@@ -241,7 +243,7 @@ function scrollTopSmooth() {
       return false;
     }
 
-    if (!/^\d{10}$/.test(mobile)) {
+    if (!/^[6-9]\d{9}$/.test(mobile)) {
       alert("Please enter a valid 10-digit mobile number.");
       return false;
     }
@@ -278,11 +280,7 @@ scrollTopSmooth();
 
 
   try {
-    const res = await fetch(
-      
-      "https://rupeedial.com/rupeedial-backend/public/index.php?action=insurance/apply",
-
-      {
+    const res = await fetch(apiUrl("insurance/get-quotes"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(userDetails),
@@ -322,14 +320,16 @@ scrollTopSmooth();
   }
 
   async function handleSubmitApplication() {
+  if (submittingApp) return;
   if (!selectedPlan) {
     alert("Please select a plan first.");
     return;
   }
 
+  setSubmittingApp(true);
   try {
     const res = await fetch(
-      "https://rupeedial.com/rupeedial-backend/public/index.php?action=insurance/apply"
+      apiUrl("insurance/apply")
 ,
       {
         method: "POST",
@@ -352,8 +352,10 @@ scrollTopSmooth();
     window.scrollTo({ top: 0, behavior: "smooth" });
   } catch (err) {
   const message =
-    err instanceof Error ? err.message : "Unable to fetch plans";
+    err instanceof Error ? err.message : "Submission failed";
   alert(message);
+} finally {
+  setSubmittingApp(false);
 }
 
 }
@@ -1088,10 +1090,11 @@ scrollTopSmooth();
                 </button>
                 <button
                   type="button"
-                  className="inline-flex items-center rounded-lg bg-[#10662A] px-5 py-2.5 text-sm font-semibold text-white shadow-sm"
+                  className="inline-flex items-center rounded-lg bg-[#10662A] px-5 py-2.5 text-sm font-semibold text-white shadow-sm disabled:opacity-60"
                   onClick={handleSubmitApplication}
+                  disabled={submittingApp}
                 >
-                  Submit request →
+                  {submittingApp ? "Submitting..." : "Submit request →"}
                 </button>
               </div>
             </div>

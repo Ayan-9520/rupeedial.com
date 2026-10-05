@@ -1,6 +1,7 @@
 // src/pages/ContactPage.tsx
 import React, { useState, useEffect } from "react";
 import { MapPin, PhoneCall, Send, ExternalLink } from "lucide-react";
+import { apiUrl } from "../config/api";
 
 type ContactForm = {
   name: string;
@@ -120,7 +121,7 @@ if (!consent) {
     
     
   const res = await fetch(
-  "https://rupeedial.com/rupeedial-backend/public/index.php?action=contact/apply",
+  apiUrl("contact/apply"),
   {
     method: "POST",
     headers: { "Content-Type": "application/json" },

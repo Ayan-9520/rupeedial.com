@@ -1,4 +1,5 @@
 import React, { useMemo, useState, useEffect } from "react";
+import { apiUrl } from "../config/api";
 
 import lap from "../assets/images/lap.png";
 
@@ -787,7 +788,7 @@ uploaded.bankStatement.forEach((file) => formData.append("bankStatement[]", file
 uploaded.other.forEach((file) => formData.append("other[]", file));
 
       const res = await fetch(
-  "https://rupeedial.com/rupeedial-backend/public/index.php?action=lap-loan/apply",
+  apiUrl("lap-loan/apply"),
   {
     method: "POST",
     body: formData,

@@ -1,4 +1,5 @@
 import React, { useState, useMemo  } from "react";
+import { apiUrl } from "../config/api";
 
 
 type FormDataType = {
@@ -243,7 +244,7 @@ Object.entries(obj).filter(([, v]) => v !== "" && v !== null && v !== undefined)
 const controller = new AbortController();
 const timeoutId = setTimeout(() => controller.abort(), 15000);
 
-fetch("https://rupeedial.com/rupeedial-backend/public/index.php?action=lead/apply", {
+fetch(apiUrl("lead/apply"), {
   method: "POST",
   headers: {
     "Content-Type": "application/json"

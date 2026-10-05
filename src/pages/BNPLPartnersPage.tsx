@@ -90,13 +90,13 @@ and get fast approvals with a fully digital process.
 
 {/* RIGHT SIDE PARTNER LOGOS */}
 
-<div className="grid grid-cols-3 gap-5">
+<div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-5">
 
-<img src={kissht} className="bg-white border p-4 rounded-lg shadow"/>
-<img src={snapmint} className="bg-white border p-4 rounded-lg shadow"/>
-<img src={kreditbee} className="bg-white border p-4 rounded-lg shadow"/>
-<img src={fibe} className="bg-white border p-4 rounded-lg shadow"/>
-<img src={moneytap} className="bg-white border p-4 rounded-lg shadow"/>
+<img src={kissht} alt="Kissht" className="h-20 w-full object-contain bg-white border p-3 sm:p-4 rounded-lg shadow"/>
+<img src={snapmint} alt="Snapmint" className="h-20 w-full object-contain bg-white border p-3 sm:p-4 rounded-lg shadow"/>
+<img src={kreditbee} alt="KreditBee" className="h-20 w-full object-contain bg-white border p-3 sm:p-4 rounded-lg shadow"/>
+<img src={fibe} alt="Fibe" className="h-20 w-full object-contain bg-white border p-3 sm:p-4 rounded-lg shadow"/>
+<img src={moneytap} alt="MoneyTap" className="h-20 w-full object-contain bg-white border p-3 sm:p-4 rounded-lg shadow"/>
 
 
 </div>

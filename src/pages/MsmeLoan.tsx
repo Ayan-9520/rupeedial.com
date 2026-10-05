@@ -1,5 +1,6 @@
 // src/pages/Msme.tsx
 import React, { useState, useMemo, useEffect } from "react";
+import { apiUrl } from "../config/api";
 import msmeLoan from "../assets/images/msme-loan.png";
 
 type Step = 1 | 2 | 3 | 4;
@@ -220,7 +221,9 @@ const OFFERS: Offer[] = [
 ];
 
 const calculateEMI = (P: number, R: number, N: number) => {
+  if (!P || P <= 0 || !N) return 0;
   const r = R / 12 / 100;
+  if (!r) return Math.round(P / N);
   return Math.round((P * r * Math.pow(1 + r, N)) / (Math.pow(1 + r, N) - 1));
 };
 
@@ -460,7 +463,7 @@ if (form.existingEmi === "" || form.existingEmi < 0)
       uploaded.other.forEach(f => formData.append("other[]", f));
 
       const res = await fetch(
-        "https://rupeedial.com/rupeedial-backend/public/index.php?action=msme-loan/apply",
+        apiUrl("msme-loan/apply"),
 
         {
           method: "POST",
@@ -468,13 +471,13 @@ if (form.existingEmi === "" || form.existingEmi < 0)
         }
       );
 
- if (!res.ok) {
-  const text = await res.text();
-  throw new Error(text);
-}
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data?.success) {
+        throw new Error(data?.message || "Submission failed");
+      }
       setStep(4);
-    } catch {
-      alert("Submission failed");
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Submission failed");
     } finally {
       setSubmitting(false);
     }

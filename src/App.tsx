@@ -28,10 +28,15 @@ import Contact from "./pages/Contact";
 import BNPLPartnersPage from "./pages/BNPLPartnersPage";
 import PartnerLogin from "./pages/PartnerLogin";
 import Login from "./pages/Login";
+import LeadBoard from "./pages/LeadBoard";
+import Pricing from "./pages/Pricing";
+import PartnersDirectory from "./pages/PartnersDirectory";
+import PartnerPublicProfile from "./pages/PartnerPublicProfile";
 import PrivacyPolicy from "./pages/privacy-policy";
 import TermsAndConditions from "./pages/TermsAndConditions";
 import RefundPolicy from "./pages/RefundPolicy";
 import LeadForm from "./pages/LeadForm";
+import NotFound from "./pages/NotFound";
 import ScrollToTop from "./components/layout/ScrollToTop";
 import LoanProductPage from "./components/loans/LoanProductPage";
 import { loanProductRoutes } from "./data/loanProductPages";
@@ -48,8 +53,8 @@ const App: React.FC = () => {
         {/* Common header */}
         <Header />
  <ScrollToTop />
-        {/* Main content area (header fixed hai isliye pt-16) */}
-        <div className="pt-16 flex-1">
+        {/* Main content — offset matches --header-h in index.css */}
+        <div className="flex-1 pt-[var(--header-h)]">
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/about" element={<About />} />
@@ -72,12 +77,18 @@ const App: React.FC = () => {
              <Route path="/education-loan" element={<EducationLoan />} />
              <Route path="/expert" element={<Expert />} />
                <Route path="/check-eligibility" element={<Eligibility />} />
-               <Route path="/learn&Earn" element={<LearnEarn />} />
+               <Route path="/learn&earn" element={<LearnEarn />} />
+               <Route path="/learn&Earn" element={<Navigate to="/learn&earn" replace />} />
             <Route path="/insurance" element={<Insurance />} />
             <Route path="/career" element={<Career />} />
             <Route path="/contact" element={<Contact />} />
-             <Route path="/partner-login" element={<PartnerLogin />} />
+            <Route path="/partner-login" element={<PartnerLogin />} />
+            <Route path="/become-partner" element={<PartnerLogin />} />
             <Route path="/login" element={<Login />} />
+            <Route path="/leadboard" element={<LeadBoard />} />
+            <Route path="/pricing" element={<Pricing />} />
+            <Route path="/partners" element={<PartnersDirectory />} />
+            <Route path="/p/:slug" element={<PartnerPublicProfile />} />
            <Route path="/privacy-policy" element={<PrivacyPolicy />} />
            <Route path="/terms" element={<TermsAndConditions />} />
           <Route path="/refund-policy" element={<RefundPolicy />} />
@@ -95,6 +106,10 @@ const App: React.FC = () => {
 
 
 <Route path="/mis" element={<LoanMISDashboard />} />
+            <Route path="/check-loan-eligibility" element={<Navigate to="/check-eligibility" replace />} />
+            <Route path="/lap" element={<Navigate to="/lap-loan" replace />} />
+            <Route path="/car-loan" element={<Navigate to="/auto-loan" replace />} />
+            <Route path="*" element={<NotFound />} />
 
           </Routes>
           

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Link } from "react-router-dom";
 import {
   CheckCircle,
@@ -7,6 +7,8 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import type { LoanProductConfig } from "../../data/loanProductPages";
+import { apiUrl, productLoanApplyUrl } from "../../config/api";
+import { CRM_API_URL } from "../../data/partnerPlans";
 
 const inputClass =
   "w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#10662A]";
@@ -58,21 +60,30 @@ const LoanProductPage: React.FC<Props> = ({ config }) => {
     canonical.setAttribute("href", `https://rupeedial.com/${slug}`);
   }, [seo, slug]);
 
-  const initialForm: FormState = {
-    companyName: "",
-    fullName: "",
-    email: "",
-    mobile: "",
-    loanAmount: "",
-    city: "",
-    product: config.productName,
-    ...Object.fromEntries(
-      (form.extraFields ?? []).map((f) => [f.name, ""])
-    ),
-  };
+  const emptyForm = useMemo<FormState>(
+    () => ({
+      companyName: "",
+      fullName: "",
+      email: "",
+      mobile: "",
+      loanAmount: "",
+      city: "",
+      product: config.productName,
+      source: slug,
+      ...Object.fromEntries(
+        (form.extraFields ?? []).map((f) => [f.name, ""])
+      ),
+    }),
+    [config.productName, slug, form.extraFields]
+  );
 
-  const [formState, setFormState] = useState<FormState>(initialForm);
+  const [formState, setFormState] = useState<FormState>(emptyForm);
+
+  useEffect(() => {
+    setFormState(emptyForm);
+  }, [emptyForm]);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   const [emiInput, setEmiInput] = useState({
@@ -82,57 +93,133 @@ const LoanProductPage: React.FC<Props> = ({ config }) => {
   });
 
   const calculateEmi = () => {
-    const r = emiInput.rate / 12 / 100;
-    const n = emiInput.tenure;
-    if (!r || !n) return 0;
-    const emi =
+    const rate = Math.min(emi.maxRate, Math.max(emi.minRate, emiInput.rate || 0));
+    const n = Math.min(emi.maxTenure, Math.max(1, Math.round(emiInput.tenure || 0)));
+    if (!emiInput.loanAmount || emiInput.loanAmount <= 0) return 0;
+    const r = rate / 12 / 100;
+    if (!r) return Math.round(emiInput.loanAmount / n);
+    const emiValue =
       (emiInput.loanAmount * r * Math.pow(1 + r, n)) /
       (Math.pow(1 + r, n) - 1);
-    return Math.round(emi);
+    return Math.round(emiValue);
   };
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
-    const { name, value } = e.target;
+    const { name } = e.target;
+    let { value } = e.target;
+    if (name === "mobile") value = value.replace(/\D/g, "").slice(0, 10);
+    if (name === "loanAmount") value = value.replace(/[^\d]/g, "");
     setFormState((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleSubmit = async () => {
     if (submitting) return;
-    if (!formState.fullName?.trim() || !formState.mobile?.trim() || !formState.loanAmount?.trim()) {
-      alert("Please fill all mandatory fields");
+    setErrorMsg(null);
+    if (
+      !formState.fullName?.trim() ||
+      !formState.mobile?.trim() ||
+      !formState.loanAmount?.trim() ||
+      !formState.city?.trim()
+    ) {
+      setErrorMsg("Please fill all mandatory fields");
       return;
     }
     if (!/^[6-9]\d{9}$/.test(formState.mobile)) {
-      alert("Please enter a valid 10-digit mobile number");
+      setErrorMsg("Please enter a valid 10-digit mobile number");
       return;
     }
     const loanAmt = Number(formState.loanAmount);
     if (!loanAmt || loanAmt <= 0) {
-      alert("Please enter a valid loan amount");
+      setErrorMsg("Please enter a valid loan amount");
       return;
     }
 
     setSubmitting(true);
-    try {
-      const res = await fetch(
-        `https://rupeedial.com/rupeedial-backend/public/index.php?action=${slug}/apply`,
-        {
+
+    if (import.meta.env.DEV) {
+      try {
+        const key =
+          (import.meta.env.VITE_CRM_PUBLIC_API_KEY as string | undefined) ||
+          "rupeedial-website-key-change-me";
+        const res = await fetch(`${CRM_API_URL}/api/public/product-loan`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(formState),
+          headers: { "Content-Type": "application/json", "X-API-Key": key },
+          body: JSON.stringify({
+            full_name: formState.fullName.trim(),
+            mobile: formState.mobile,
+            city: formState.city.trim(),
+            product: config.productName,
+            loan_amount: loanAmt,
+          }),
+        });
+        const data = await res.json().catch(() => null);
+        if (!res.ok || data?.success !== true) {
+          throw new Error(data?.detail || "Submission failed");
         }
-      );
-      const data = await res.json();
-      if (!res.ok || data.success === false) {
-        throw new Error(data.message || "Submission failed");
+        setSuccessMsg(
+          data.duplicate
+            ? `This number is already with RupeeDial. Reference: ${data.reference_id}`
+            : `${form.successMessage} Reference: ${data.reference_id}. A specialist will call. Lender match is not done on this form.`
+        );
+        if (!data.duplicate) setFormState(emptyForm);
+        setTimeout(() => setSuccessMsg(null), 8000);
+      } catch (err) {
+        setErrorMsg(err instanceof Error ? err.message : "Something went wrong. Please try again or call our expert.");
+      } finally {
+        setSubmitting(false);
       }
-      setSuccessMsg(form.successMessage);
-      setFormState(initialForm);
-      setTimeout(() => setSuccessMsg(null), 4000);
+      return;
+    }
+
+    const productPayload = {
+      ...formState,
+      product: config.productName,
+      source: slug,
+      slug,
+    };
+
+    // Fall back to the next endpoint only when one is unreachable or missing;
+    // any reached handler may already have saved the lead, so never resubmit.
+    const endpoints = [productLoanApplyUrl, apiUrl("product-loan/apply")];
+
+    try {
+      let lastError = "Submission failed";
+      for (const url of endpoints) {
+        let res: Response;
+        try {
+          res = await fetch(url, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(productPayload),
+          });
+        } catch {
+          continue;
+        }
+        if (res.status === 404) continue;
+
+        const data = await res.json().catch(() => null);
+        if (data?.success === true) {
+          setSuccessMsg(
+            data.referenceId
+              ? `${form.successMessage} Reference: ${data.referenceId}`
+              : form.successMessage
+          );
+          setFormState(emptyForm);
+          setTimeout(() => setSuccessMsg(null), 6000);
+          return;
+        }
+        lastError = data?.message || lastError;
+        break;
+      }
+      throw new Error(lastError);
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Something went wrong. Please try again or call our expert.");
+      setErrorMsg(
+        err instanceof Error
+          ? err.message
+          : "Something went wrong. Please try again or call our expert."
+      );
     } finally {
       setSubmitting(false);
     }
@@ -190,7 +277,7 @@ const LoanProductPage: React.FC<Props> = ({ config }) => {
               </li>
             </ul>
             <Link
-              to="/check-eligibility"
+              to={`/check-eligibility?product=${encodeURIComponent(config.productName)}`}
               className="inline-block mt-6 px-5 py-2.5 rounded-lg border border-[#10662A] text-[#10662A] text-sm font-semibold hover:bg-[#10662A] hover:text-white transition"
             >
               Check Eligibility Free
@@ -198,6 +285,11 @@ const LoanProductPage: React.FC<Props> = ({ config }) => {
           </div>
 
           <div className="bg-green-50 rounded-2xl shadow-lg border border-slate-200 p-6 sm:p-7">
+            {errorMsg && (
+              <div className="mb-3 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                {errorMsg}
+              </div>
+            )}
             {successMsg && (
               <div className="mb-3 rounded-md border border-green-300 bg-green-50 px-3 py-2 text-xs text-green-700 flex items-center gap-2">
                 <span className="text-sm">✅</span>
@@ -333,12 +425,15 @@ const LoanProductPage: React.FC<Props> = ({ config }) => {
                 step={0.1}
                 className={inputClass}
                 value={emiInput.rate}
-                onChange={(e) => {
-                  let value = Number(e.target.value);
-                  if (value < emi.minRate) value = emi.minRate;
-                  if (value > emi.maxRate) value = emi.maxRate;
-                  setEmiInput({ ...emiInput, rate: value });
-                }}
+                onChange={(e) =>
+                  setEmiInput({ ...emiInput, rate: Number(e.target.value) })
+                }
+                onBlur={() =>
+                  setEmiInput((prev) => ({
+                    ...prev,
+                    rate: Math.min(emi.maxRate, Math.max(emi.minRate, prev.rate || emi.minRate)),
+                  }))
+                }
               />
             </div>
             <div>
@@ -356,6 +451,15 @@ const LoanProductPage: React.FC<Props> = ({ config }) => {
                     ...emiInput,
                     tenure: Number(e.target.value),
                   })
+                }
+                onBlur={() =>
+                  setEmiInput((prev) => ({
+                    ...prev,
+                    tenure: Math.min(
+                      emi.maxTenure,
+                      Math.max(emi.minTenure, Math.round(prev.tenure || emi.minTenure))
+                    ),
+                  }))
                 }
               />
             </div>

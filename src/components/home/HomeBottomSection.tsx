@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { Link } from "react-router-dom";
 import yashpal from "../../assets/images/yashpal.jpg";
 import vipin from "../../assets/images/vipin.jpg";
 import Anita from "../../assets/images/Anita Singh.png";
@@ -75,13 +76,13 @@ const bankLogos = [
 
 /* ================= RELATED SERVICES ================= */
 const relatedServices = [
-  { alt: "msme", src: msme },
-  { alt: "rxil", src: rxil },
-  { alt: "gst", src: gst },
-  { alt: "udyog", src: udyog },
-  { alt: "gem", src: gem },
-  { alt: "udyam", src: udyam },
-  { alt: "mudra", src: mudra },
+  { alt: "MSME Loan", src: msme, link: "/msme-loan", label: "MSME Loan" },
+  { alt: "RXIL", src: rxil, link: "/export-finance", label: "Export Finance" },
+  { alt: "GST Loan", src: gst, link: "/business-loan", label: "Business Loan" },
+  { alt: "Udyog", src: udyog, link: "/working-capital-loan", label: "Working Capital" },
+  { alt: "GEM", src: gem, link: "/msme-loan", label: "MSME Services" },
+  { alt: "Udyam", src: udyam, link: "/msme-loan", label: "Udyam Registration" },
+  { alt: "Mudra", src: mudra, link: "/mudra-loan", label: "Mudra Loan" },
 ];
 
 /* ================= FAQ ================= */
@@ -130,7 +131,7 @@ const HomeBottomSection = () => {
             {/* SLIDER */}
           <div
   ref={storiesRef}
-  className="flex gap-4 overflow-hidden scroll-smooth px-[7.5%] pb-4"
+  className="flex gap-4 overflow-x-auto scroll-smooth px-2 sm:px-[7.5%] pb-4 scrollbar-hide"
 >
   {stories.map((s) => (
     <article
@@ -240,11 +241,20 @@ const HomeBottomSection = () => {
             Related Services
           </h3>
 
-          <div className="flex flex-wrap justify-center gap-6">
+          <div className="flex flex-wrap justify-center gap-4 md:gap-6">
             {relatedServices.map((r) => (
-              <div key={r.alt} className="w-[100px] h-[50px] border rounded-lg shadow flex items-center justify-center">
-                <img src={r.src} alt={r.alt} className="max-h-full" />
-              </div>
+              <Link
+                key={r.alt}
+                to={r.link}
+                className="group flex flex-col items-center gap-2 w-[100px] md:w-[110px]"
+              >
+                <div className="w-full h-[52px] border border-[#d7eadb] rounded-lg shadow-sm flex items-center justify-center bg-white p-2 transition group-hover:border-[#10662A] group-hover:shadow-md">
+                  <img src={r.src} alt={r.alt} className="max-h-full max-w-full object-contain" />
+                </div>
+                <span className="text-[10px] md:text-[11px] font-medium text-[#390A5D] group-hover:text-[#10662A]">
+                  {r.label}
+                </span>
+              </Link>
             ))}
           </div>
         </div>

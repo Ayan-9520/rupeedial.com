@@ -1,5 +1,6 @@
 // src/pages/CreditCards.tsx
 import React, { useEffect, useRef, useState } from "react";
+import { apiUrl } from "../config/api";
 import credit from "../assets/images/creditcard.png";
 
 import sbi from "../assets/images/sbi.png";
@@ -566,7 +567,7 @@ const submitToBankApiSingle = async (offer: Offer) => {
   );
 
   const res = await fetch(
-    "https://rupeedial.com/rupeedial-backend/public/index.php?action=credit-card/apply",
+    apiUrl("credit-card/apply"),
     {
       method: "POST",
       body: formData,

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { apiUrl } from "../config/api";
 import {
   CheckCircle,
   Factory,
@@ -89,8 +90,10 @@ const [submitting, setSubmitting] = useState(false);
   });
 
   const calculateEmi = () => {
-    const r = emiInput.rate / 12 / 100;
-    const n = emiInput.tenure;
+    const rate = Math.min(30, Math.max(8, emiInput.rate || 0));
+    const r = rate / 12 / 100;
+    const n = Math.min(84, Math.max(1, Math.round(emiInput.tenure || 0)));
+    if (!emiInput.loanAmount || emiInput.loanAmount <= 0) return 0;
     const emi =
       (emiInput.loanAmount * r * Math.pow(1 + r, n)) /
       (Math.pow(1 + r, n) - 1);
@@ -130,7 +133,7 @@ const [submitting, setSubmitting] = useState(false);
 
   try {
     const res = await fetch(
-      "https://rupeedial.com/rupeedial-backend/public/index.php?action=machinery-loan/apply",
+      apiUrl("machinery-loan/apply"),
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -381,14 +384,15 @@ const [submitting, setSubmitting] = useState(false);
     step={0.1}
     className={`${inputClass} pr-10`}
     value={emiInput.rate}
-    onChange={(e) => {
-      let value = Number(e.target.value);
-
-      if (value < 8) value = 8;
-      if (value > 30) value = 30;
-
-      setEmiInput({ ...emiInput, rate: value });
-    }}
+    onChange={(e) =>
+      setEmiInput({ ...emiInput, rate: Number(e.target.value) })
+    }
+    onBlur={() =>
+      setEmiInput((prev) => ({
+        ...prev,
+        rate: Math.min(30, Math.max(8, prev.rate || 8)),
+      }))
+    }
     placeholder="e.g. 10.5"
   />
 
@@ -414,6 +418,12 @@ const [submitting, setSubmitting] = useState(false);
   value={emiInput.tenure}
   onChange={(e) =>
     setEmiInput({ ...emiInput, tenure: Number(e.target.value) })
+  }
+  onBlur={() =>
+    setEmiInput((prev) => ({
+      ...prev,
+      tenure: Math.min(84, Math.max(12, Math.round(prev.tenure || 12))),
+    }))
   }
   placeholder="e.g. 60"
 />

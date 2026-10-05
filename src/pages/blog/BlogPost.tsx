@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
+import { apiUrl } from "../../config/api";
 
 import BlogHero from "../../components/blog/BlogHero";
 import BlogProductSidebar from "../../components/blog/BlogSidebar";
@@ -19,19 +20,22 @@ import { educationLoanBlogs } from "../../data/blogs/educationLoanBlogs";
 export default function BlogPost() {
   const { slug } = useParams();
   const [blog, setBlog] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function loadBlog() {
+      setLoading(true);
       try {
-        // 1️⃣ BACKEND FIRST
-        const res = await fetch(
-          `https://rupeedial.com/rupeedial-backend/public/index.php?action=blogs/${slug}`
-        );
-        const data = await res.json();
-
-        if (data?.slug) {
-          setBlog(data);
-          return;
+        // 1️⃣ BACKEND FIRST — optional
+        try {
+          const res = await fetch(apiUrl(`blogs/${slug}`));
+          const data = await res.json();
+          if (data?.slug) {
+            setBlog(data);
+            return;
+          }
+        } catch {
+          /* fall back to static blogs */
         }
 
         // 2️⃣ FRONTEND FALLBACK
@@ -48,15 +52,27 @@ export default function BlogPost() {
         ];
 
         setBlog(allFrontendBlogs.find((b) => b.slug === slug) || null);
-      } catch (err) {
-        console.error(err);
+      } finally {
+        setLoading(false);
       }
     }
 
     loadBlog();
   }, [slug]);
 
-  if (!blog) return <p>Blog not found</p>;
+  if (loading) {
+    return <p className="py-24 text-center text-sm text-slate-500">Loading…</p>;
+  }
+  if (!blog) {
+    return (
+      <div className="py-24 text-center">
+        <p className="text-lg font-semibold text-[#390A5D]">Blog not found</p>
+        <a href="/blog" className="mt-3 inline-block text-sm font-semibold text-[#10662A]">
+          Browse all blogs
+        </a>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-12">

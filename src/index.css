@@ -4,15 +4,101 @@
 @tailwind components;
 @tailwind utilities;
 
-/* global body style */
+:root {
+  --header-h: 4rem;
+  --rd-green: #10662a;
+  --rd-green-deep: #0a4a1e;
+  --rd-plum: #390a5d;
+  --rd-mist: #e8f7ec;
+  --rd-ink: #5c4d72;
+  --font-display: "Outfit", system-ui, sans-serif;
+  --font-body: "Outfit", system-ui, sans-serif;
+}
+
+@media (min-width: 768px) {
+  :root {
+    --header-h: 4.5rem;
+  }
+}
+
 body {
   @apply bg-white text-slate-900;
   margin: 0;
+  font-family: var(--font-body);
 }
 
-/* React root ko full height do */
+html,
+body {
+  overflow-x: clip;
+}
+
 #root {
   min-height: 100vh;
 }
 
+img {
+  max-width: 100%;
+}
 
+.font-display {
+  font-family: var(--font-display);
+}
+
+.site-header {
+  height: var(--header-h);
+}
+
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* Marketplace premium surfaces */
+.rd-market-bg {
+  background:
+    radial-gradient(ellipse 80% 50% at 10% -10%, rgba(16, 102, 42, 0.14), transparent 55%),
+    radial-gradient(ellipse 60% 40% at 100% 0%, rgba(57, 10, 93, 0.08), transparent 50%),
+    linear-gradient(180deg, #f7fbf8 0%, #ffffff 42%, #f4faf6 100%);
+}
+
+.rd-lead-card {
+  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.35s ease, border-color 0.25s ease;
+}
+.rd-lead-card:hover {
+  transform: translateY(-4px);
+  border-color: rgba(16, 102, 42, 0.35);
+  box-shadow: 0 18px 40px rgba(16, 102, 42, 0.12);
+}
+
+.rd-plan-card {
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.4s ease;
+}
+.rd-plan-card:hover {
+  transform: translateY(-6px);
+}
+
+@keyframes rdRise {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.rd-rise {
+  animation: rdRise 0.55s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.rd-rise-delay-1 {
+  animation-delay: 0.08s;
+}
+.rd-rise-delay-2 {
+  animation-delay: 0.16s;
+}
+.rd-rise-delay-3 {
+  animation-delay: 0.24s;
+}

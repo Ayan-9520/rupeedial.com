@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from "react";
+import { apiUrl } from "../config/api";
 import homeloanpage from "../assets/images/home-loan.png";
 import { useEffect } from "react";
 type Step = 1 | 2 | 3 | 4;
@@ -750,7 +751,7 @@ if (selectedBanks.length === 0) {
 
       const res = await fetch(
         
-        "https://rupeedial.com/rupeedial-backend/public/index.php?action=home-loan/apply",
+        apiUrl("home-loan/apply"),
         {
           method: "POST",
           body: formData,

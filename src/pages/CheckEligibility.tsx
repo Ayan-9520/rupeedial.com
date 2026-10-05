@@ -1,1482 +1,1039 @@
-import React, { useState, useEffect } from "react";
-import { useLocation } from "react-router-dom";
+import React, { useEffect, useMemo, useState } from "react";
+import { Link, useLocation } from "react-router-dom";
+import {
+  ArrowLeft,
+  ArrowRight,
+  Building2,
+  CheckCircle2,
+  ChevronDown,
+  Clock,
+  Download,
+  FileUp,
+  Loader2,
+  Lock,
+  PhoneCall,
+  ShieldCheck,
+  X,
+} from "lucide-react";
+import { apiUrl } from "../config/api";
+import { CRM_API_URL, CRM_APP_URL } from "../data/partnerPlans";
+import {
+  ASSUMED_CIBIL,
+  DOCUMENTS,
+  LENDER_KIND_LABEL,
+  PRODUCTS,
+  PRODUCT_GROUPS,
+  docBucket,
+  evaluateAll,
+  formatINR,
+  formatShortINR,
+  incomeLabel,
+  isProduct,
+  needsPropertyValue,
+  tenureLabel,
+  type DocBucket,
+  type Employment,
+  type Offer,
+  type Product,
+} from "../data/eligibility";
 
-import CreatableSelect from "react-select/creatable";
-import type { SingleValue } from "react-select";
+type Step = 1 | 2 | 3 | 4;
+type SortKey = "amount" | "rate" | "monthly";
 
- // 🔥 YE LINE VERY IMPORTANT
-
-
-
-/* ================= TYPES ================= */
-
-type Product =
-  | "Personal Loan"
-  | "Home Loan"
-  | "MSME Loan"
-  | "Mudra Loan"
-  | "Auto Loan"
-  | "Credit Card"
-  | "Loan Against Property"
-  | "Machinery Loan"
-  | "Education Loan";
-
-interface FormData {
+interface FormState {
   product: Product | "";
+  employment: Employment | "";
   fullName: string;
   mobile: string;
-   email: string;   
-  employment: string;
-  monthlyIncome: number | "";
-  existingEmi: number | "";
-  cibil: number | "";
-  propertyValue?: number | "";
-  courseFee?: number | "";
+  email: string;
+  city: string;
+  monthlyIncome: string;
+  existingEmi: string;
+  requestedAmount: string;
+  cibil: string;
+  propertyValue: string;
+  courseFee: string;
   acceptConsent: boolean;
 }
-type SelectOption = {
-  label: string;
-  value: Product;
-};
 
-
-/* ================= PRODUCT RULES ================= */
-
-const PRODUCT_RULES: Record<Product, { minIncome: number; multiplier: number; maxCap?: number }> =
-{
-  "Personal Loan": { minIncome: 15000, multiplier: 20, maxCap: 2000000 },
-
-  "Home Loan": { minIncome: 25000, multiplier: 60 },
-
-  "MSME Loan": { minIncome: 20000, multiplier: 36, maxCap: 5000000 },
-
-  "Mudra Loan": { minIncome: 10000, multiplier: 12, maxCap: 1000000 },
-
-  "Auto Loan": { minIncome: 18000, multiplier: 30, maxCap: 3000000 },
-
-  "Credit Card": { minIncome: 18000, multiplier: 30, maxCap: 500000 },
-
-  "Loan Against Property": { minIncome: 30000, multiplier: 80 },
-
-  // 🔹 EDUCATION LOAN LOGIC
-  "Education Loan": {
-    minIncome: 15000,          // Parent / Guardian income
-    multiplier: 20,           // Conservative
-    maxCap: 5000000,          // ₹50 lakh max (India realistic)
-  },
-
-  // 🔹 MACHINERY LOAN LOGIC
-  "Machinery Loan": {
-    minIncome: 20000,         // Business income
-    multiplier: 40,          // Higher due to asset-backed
-    maxCap: 10000000,        // ₹1 crore max
-  },
-};
-
-const productSelectOptions: SelectOption[] = Object.keys(PRODUCT_RULES).map(
-  (p) => ({
-    label: p,
-    value: p as Product,
-  })
-);
-
-/* ================= DOCUMENT RULES ================= */
-
-const DOCUMENT_RULES: Record<Product, string[]> = {
-  "Personal Loan": ["PAN Card", "Aadhaar Card", "Salary Slip", "Bank Statement"],
-  "Home Loan": ["PAN Card", "Aadhaar Card", "Income Proof", "Property Papers"],
-  "MSME Loan": ["PAN Card", "GST Certificate", "ITR", "Bank Statement"],
-  "Mudra Loan": ["PAN Card", "Aadhaar Card", "Business Proof"],
-  "Auto Loan": ["PAN Card", "Aadhaar Card", "Income Proof", "Quotation"],
-  "Credit Card": ["PAN Card", "Income Proof"],
-  "Loan Against Property": [
-    "PAN Card",
-    "Aadhaar Card",
-    "Property Papers",
-    "Income Proof",
-  ],
-  "Machinery Loan": ["PAN Card", "Quotation", "Bank Statement"],
-  "Education Loan": ["PAN Card", "Aadhaar Card", "Admission Letter"],
-};
-
-/* ================= BANK DATA ================= */
-const DOC_KEY_MAP: Record<string, "kyc" | "incomeProof" | "bankStatement" | "other"> = {
-  "PAN Card": "kyc",
-  "Aadhaar Card": "kyc",
-
-  "Salary Slip": "incomeProof",
-  "Income Proof": "incomeProof",
-  "ITR": "incomeProof",
-  "GST Certificate": "incomeProof",
-  "Business Proof": "incomeProof",
-
-  "Bank Statement": "bankStatement",
-
-  "Property Papers": "other",
-  "Quotation": "other",
-  "Admission Letter": "other",
-};
-
-interface BankRule {
-  name: string;
-  logo: string;
-  productMultiplier: Partial<Record<Product, number>>;
-  emiFactor: number;
-  lowCibilFactor: number;
-  interestRate?: Partial<Record<Product, number>>; // optional
-}
-
-
-// 👉 YAHAN apne saare bank imports + BANKS array paste karo
-// (Same as tumne pehle diya tha)
-
-import eligibilities from "../assets/images/eligibilities.png";
-import union from "../assets/images/union.png";
-import bob from "../assets/images/bob.png";
-import boi from "../assets/images/boi.png";
-import indian from "../assets/images/indian-bank.png";
-import canara from "../assets/images/canara.png";
-import maha from "../assets/images/maharastra.png";
-import central from "../assets/images/central.png";
-import uco from "../assets/images/uco.png";
-import pnb from "../assets/images/pnb.png";
-import sbi from "../assets/images/sbi.png";
-import hdfc from "../assets/images/hdfc-b.png";
-import axis from "../assets/images/axis.png";
-import yes from "../assets/images/yes.png";
-import bandhan from "../assets/images/bandhan.jpg";
-import kotak from "../assets/images/kotak.png";
-import au from "../assets/images/au.jpg";
-import icici from "../assets/images/icici.png";
-import idbi from "../assets/images/idbi.png";
-import hdb from "../assets/images/hdbi.jpg";
-import tata from "../assets/images/tcl-logo.webp";
-import bajaj from "../assets/images/bajaj.jpg";
-import mahindra from "../assets/images/mahindra.jpg";
-
-// ... baaki sab imports same rakho
-
-const BANKS: BankRule[] = [
-  {
-    name: "Union Bank of India",
-    logo: union,
-    emiFactor: 7,
-    lowCibilFactor: 0.8,
-    productMultiplier: {
-  "Personal Loan": 18,
-  "Home Loan": 60,
-  "Auto Loan": 26,
-  "MSME Loan": 24,
-  "Loan Against Property": 70,
-  "Mudra Loan": 10,
-
-  "Education Loan": 22,     // 👈 ADD
-  "Machinery Loan": 38,    // 👈 ADD
-},
-
-  },
-  {
-    name: "Bank of Baroda",
-    logo: bob,
-    emiFactor: 7,
-    lowCibilFactor: 0.82,
-    productMultiplier: {
-      "Personal Loan": 19,
-      "Home Loan": 62,
-      "Auto Loan": 27,
-      "MSME Loan": 25,
-      "Loan Against Property": 72,
-      "Mudra Loan": 11,
-    },
-  },
-  {
-    name: "Bank of India",
-    logo: boi,
-    emiFactor: 7,
-    lowCibilFactor: 0.8,
-   productMultiplier: {
-  "Personal Loan": 18,
-  "Home Loan": 60,
-  "Auto Loan": 26,
-  "MSME Loan": 24,
-  "Loan Against Property": 70,
-  "Mudra Loan": 10,
-
-  "Education Loan": 22,     // 👈 ADD
-  "Machinery Loan": 38,    // 👈 ADD
-},
-
-  },
-  {
-    name: "Indian Bank",
-    logo: indian,
-    emiFactor: 6,
-    lowCibilFactor: 0.78,
-    productMultiplier: {
-      "Personal Loan": 17,
-      "Home Loan": 58,
-      "Auto Loan": 25,
-      "MSME Loan": 23,
-      "Loan Against Property": 68,
-      "Mudra Loan": 10,
-    },
-  },
-  {
-    name: "Canara Bank",
-    logo: canara,
-    emiFactor: 7,
-    lowCibilFactor: 0.8,
-    productMultiplier: {
-      "Personal Loan": 19,
-      "Home Loan": 61,
-      "Auto Loan": 27,
-      "MSME Loan": 25,
-      "Loan Against Property": 72,
-      "Mudra Loan": 11,
-    },
-  },
-  {
-    name: "Bank of Maharashtra",
-    logo: maha,
-    emiFactor: 6,
-    lowCibilFactor: 0.78,
-    productMultiplier: {
-      "Personal Loan": 17,
-      "Home Loan": 58,
-      "Auto Loan": 25,
-      "MSME Loan": 23,
-      "Loan Against Property": 68,
-      "Mudra Loan": 9,
-    },
-  },
-  {
-    name: "Central Bank of India",
-    logo: central,
-    emiFactor: 6,
-    lowCibilFactor: 0.78,
-    productMultiplier: {
-      "Personal Loan": 17,
-      "Home Loan": 58,
-      "Auto Loan": 25,
-      "MSME Loan": 23,
-      "Loan Against Property": 68,
-      "Mudra Loan": 9,
-    },
-  },
-  {
-    name: "UCO Bank",
-    logo: uco,
-    emiFactor: 6,
-    lowCibilFactor: 0.75,
-    productMultiplier: {
-      "Personal Loan": 16,
-      "Home Loan": 56,
-      "Auto Loan": 24,
-      "MSME Loan": 22,
-      "Loan Against Property": 66,
-      "Mudra Loan": 9,
-    },
-  },
-  {
-    name: "Punjab National Bank",
-    logo: pnb,
-    emiFactor: 8,
-    lowCibilFactor: 0.83,
-    productMultiplier: {
-  "Personal Loan": 20,
-  "Home Loan": 65,
-  "Auto Loan": 28,
-  "MSME Loan": 26,
-  "Loan Against Property": 75,
-  "Mudra Loan": 11,
-
-  "Education Loan": 24,    // 👈 ADD
-  "Machinery Loan": 41,   // 👈 ADD
-},
-
-  },
-  {
-    name: "State Bank of India",
-    logo: sbi,
-    emiFactor: 8,
-    lowCibilFactor: 0.85,
-   productMultiplier: {
-  "Personal Loan": 20,
-  "Home Loan": 70,
-  "Auto Loan": 28,
-  "MSME Loan": 26,
-  "Loan Against Property": 80,
-  "Mudra Loan": 10,
-
-  "Education Loan": 25,      // 👈 ADD
-  "Machinery Loan": 42,     // 👈 ADD
-},
-
-  },
-  {
-    name: "HDFC Bank",
-    logo: hdfc,
-    emiFactor: 9,
-    lowCibilFactor: 0.9,
-    productMultiplier: {
-  "Personal Loan": 23,
-  "Home Loan": 68,
-  "Auto Loan": 32,
-  "MSME Loan": 30,
-  "Loan Against Property": 78,
-  "Mudra Loan": 11,
-
-  "Education Loan": 27,     // 👈 ADD
-  "Machinery Loan": 44,    // 👈 ADD
-},
-
-  },
-  {
-    name: "Axis Bank",
-    logo: axis,
-    emiFactor: 8,
-    lowCibilFactor: 0.88,
-   productMultiplier: {
-  "Personal Loan": 21,
-  "Home Loan": 63,
-  "Auto Loan": 29,
-  "MSME Loan": 27,
-  "Loan Against Property": 74,
-  "Mudra Loan": 11,
-
-  "Education Loan": 26,    // 👈 ADD
-  "Machinery Loan": 43,   // 👈 ADD
-},
-
-  },
-  {
-    name: "Yes Bank",
-    logo: yes,
-    emiFactor: 8,
-    lowCibilFactor: 0.86,
-    productMultiplier: {
-      "Personal Loan": 21,
-      "Home Loan": 64,
-      "Auto Loan": 29,
-      "MSME Loan": 27,
-      "Loan Against Property": 74,
-      "Mudra Loan": 11,
-    },
-  },
-  {
-    name: "Bandhan Bank",
-    logo: bandhan,
-    emiFactor: 7,
-    lowCibilFactor: 0.82,
-    productMultiplier: {
-      "Personal Loan": 19,
-      "Home Loan": 60,
-      "Auto Loan": 27,
-      "MSME Loan": 25,
-      "Loan Against Property": 72,
-      "Mudra Loan": 11,
-    },
-  },
-  {
-    name: "Kotak Mahindra Prime",
-    logo: kotak,
-    emiFactor: 8,
-    lowCibilFactor: 0.9,
-    productMultiplier: {
-      "Personal Loan": 23,
-      "Home Loan": 66,
-      "Auto Loan": 31,
-      "MSME Loan": 29,
-      "Loan Against Property": 76,
-      "Mudra Loan": 12,
-    },
-  },
-  {
-    name: "AU Small Finance Bank",
-    logo: au,
-    emiFactor: 7,
-    lowCibilFactor: 0.83,
-    productMultiplier: {
-      "Personal Loan": 20,
-      "Home Loan": 62,
-      "Auto Loan": 28,
-      "MSME Loan": 26,
-      "Loan Against Property": 73,
-      "Mudra Loan": 11,
-    },
-  },
-  {
-    name: "ICICI Bank",
-    logo: icici,
-    emiFactor: 8,
-    lowCibilFactor: 0.9,
-    productMultiplier: {
-  "Personal Loan": 23,
-  "Home Loan": 68,
-  "Auto Loan": 32,
-  "MSME Loan": 30,
-  "Loan Against Property": 78,
-  "Mudra Loan": 11,
-
-  "Education Loan": 27,    // 👈 ADD
-  "Machinery Loan": 44,   // 👈 ADD
-},
-
-  },
-  {
-    name: "IDBI Bank",
-    logo: idbi,
-    emiFactor: 7,
-    lowCibilFactor: 0.82,
-    productMultiplier: {
-      "Personal Loan": 19,
-      "Home Loan": 61,
-      "Auto Loan": 27,
-      "MSME Loan": 25,
-      "Loan Against Property": 72,
-      "Mudra Loan": 10,
-    },
-  },
-  {
-    name: "HDB Financial Services",
-    logo: hdb,
-    emiFactor: 9,
-    lowCibilFactor: 0.92,
-    productMultiplier: {
-      "Personal Loan": 26,
-      "Auto Loan": 34,
-      "MSME Loan": 32,
-    },
-  },
-  {
-    name: "Tata Capital",
-    logo: tata,
-    emiFactor: 9,
-    lowCibilFactor: 0.93,
-    productMultiplier: {
-      "Personal Loan": 27,
-      "Auto Loan": 35,
-      "MSME Loan": 33,
-      "Education Loan": 20,     
-  "Machinery Loan": 40, 
-    },
-  },
-  {
-    name: "Bajaj Finance",
-    logo: bajaj,
-    emiFactor: 10,
-    lowCibilFactor: 0.95,
-    productMultiplier: {
-      "Personal Loan": 28,
-      "Auto Loan": 36,
-      "MSME Loan": 34,
-         "Education Loan": 20,     
-  "Machinery Loan": 40, 
-    },
-  },
-  {
-    name: "Mahindra Finance",
-    logo: mahindra,
-    emiFactor: 8,
-    lowCibilFactor: 0.88,
-    productMultiplier: {
-      "Personal Loan": 22,
-      "Auto Loan": 30,
-      "MSME Loan": 28,
-         "Education Loan": 20,     
-  "Machinery Loan": 40, 
-    },
-  },
+const CIBIL_BANDS = [
+  { value: "0", label: "I don't know" },
+  { value: "820", label: "800 or above" },
+  { value: "775", label: "750 – 799" },
+  { value: "725", label: "700 – 749" },
+  { value: "675", label: "650 – 699" },
+  { value: "625", label: "600 – 649" },
+  { value: "580", label: "Below 600" },
 ];
-/* ================= UTILS ================= */
 
-const inputClass =
-  "w-full rounded-md border px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#B0E9B2]";
+const STEPS = ["Your details", "Compare offers", "Documents", "Submitted"];
 
-const calculateBankEligibility = (
-  bank: BankRule,
-  income: number,
-  emi: number,
-  cibil: number,
-  product: Product,
-  employment?: string,
-  propertyValue?: number,
-  courseFee?: number
-) => {
-  const rule = PRODUCT_RULES[product];
-  if (!rule) return 0;
+const emptyFiles: Record<DocBucket, File[]> = { kyc: [], incomeProof: [], bankStatement: [], other: [] };
 
-  const bankMultiplier = bank.productMultiplier?.[product];
-  const multiplier = bankMultiplier || rule.multiplier;
+const digits = (v: string) => v.replace(/\D/g, "");
+const toNum = (v: string) => Number(digits(v)) || 0;
+const groupINR = (v: string) => (digits(v) ? Number(digits(v)).toLocaleString("en-IN") : "");
 
-  // ❌ below income reject
-  if (!income || income < rule.minIncome) return 0;
+const fieldBase =
+  "w-full h-12 rounded-xl border bg-white px-4 text-[15px] text-gray-900 placeholder:text-slate-400 transition focus:outline-none focus:ring-4 focus:ring-[#10662A]/10 focus:border-[#10662A]/50";
 
-  // 🧮 FOIR (main factor)
-  const foir = income > 0 ? emi / income : 0;
-
-  if (foir >= 0.75) return 0;
-
-  // 🧠 risk score system (REAL)
-  let riskScore = 1;
-
-  // FOIR impact
-  if (foir >= 0.6) riskScore *= 0.6;
-  else if (foir >= 0.5) riskScore *= 0.75;
-  else riskScore *= 1;
-
-  // CIBIL impact
-  if (cibil < 550) return 0;
-  else if (cibil < 650) riskScore *= 0.7;
-  else if (cibil < 750) riskScore *= 0.9;
-  else if (cibil >= 800) riskScore *= 1.15;
-  else riskScore *= 1.05;
-
-  // Employment impact
-  if (employment === "Self-Employed") riskScore *= 0.9;
-  if (employment === "Business Owner") riskScore *= 0.85;
-  if (employment === "Salaried") riskScore *= 1.05;
-
-  // Bank strength
-  const bankStrength =
-    1 +
-    (bank.emiFactor - 6) * 0.02 +
-    (bank.lowCibilFactor - 0.75);
-
-  // 🧮 FINAL AMOUNT
-  let amount = income * multiplier * bankStrength * riskScore;
-
-  // 🏠 Secured loan caps
-  if (
-    (product === "Home Loan" || product === "Loan Against Property") &&
-    propertyValue
-  ) {
-    amount = Math.min(amount, propertyValue * 0.7);
-  }
-
-  // 🎓 Education loan
-  if (product === "Education Loan") {
-    if (courseFee) {
-      amount = Math.min(amount, courseFee * 0.8);
-    }
-  }
-
-  // 💳 Credit card logic
-  if (product === "Credit Card") {
-    let cap = 200000;
-
-    if (cibil >= 750) cap = 500000;
-    else if (cibil >= 700) cap = 300000;
-
-    amount = Math.min(amount, cap);
-  }
-
-  // 🪙 Mudra cap
-  if (product === "Mudra Loan") {
-    amount = Math.min(amount, 1000000);
-  }
-
-  // 🏭 Machinery cap
-  if (product === "Machinery Loan" && rule.maxCap) {
-    amount = Math.min(amount, rule.maxCap);
-  }
-
-  // General cap
-  if (rule.maxCap && product !== "Credit Card") {
-    amount = Math.min(amount, rule.maxCap);
-  }
-
-  if (amount < 0) return 0;
-
-  return Math.round(amount);
-};  // ✅ CLOSE calculateBankEligibility FUNCTION
-
-const getInterestRate = (
-  bank: BankRule,
-  product: Product,
-  cibil: number,
-  employment?: string
-) => {
-  let rate = 10;
-
-  // Product base rate
-  if (product === "Home Loan") rate = 8.5;
-  else if (product === "Personal Loan") rate = 11;
-  else if (product === "Auto Loan") rate = 9;
-  else if (product === "Education Loan") rate = 10;
-  else if (product === "Credit Card") rate = 24;
-
-  // CIBIL impact
-  if (cibil >= 800) rate -= 1;
-  else if (cibil >= 750) rate -= 0.5;
-  else if (cibil < 650) rate += 2;
-
-  // Employment impact
-  if (employment === "Self-Employed") rate += 0.5;
-  if (employment === "Business Owner") rate += 1;
-
-  // Bank strength adjust
-  rate += (10 - bank.emiFactor) * 0.2;
-
-  return Math.round(rate * 10) / 10;
-};
-/* ================= COMPONENT ================= */
-
-
-const LoanJourney: React.FC = () => {
-  useEffect(() => {
-  // ✅ PAGE TITLE
-  document.title =
-    "Check Loan Eligibility Online | Personal, Home, MSME, Education | RupeeDial";
-
-  // ✅ META DESCRIPTION
-  let meta = document.querySelector('meta[name="description"]');
-  if (!meta) {
-    meta = document.createElement("meta");
-    meta.setAttribute("name", "description");
-    document.head.appendChild(meta);
-  }
-  meta.setAttribute(
-    "content",
-    "Check loan eligibility online for personal loan, home loan, MSME, education loan, auto loan and more. Compare eligibility across 50+ banks instantly with RupeeDial."
-  );
-
-  // ✅ CANONICAL TAG
-  let canonical = document.querySelector('link[rel="canonical"]');
-  if (!canonical) {
-    canonical = document.createElement("link");
-    canonical.setAttribute("rel", "canonical");
-    document.head.appendChild(canonical);
-  }
-  canonical.setAttribute(
-    "href",
-    "https://rupeedial.com/check-loan-eligibility"
-  );
-}, []);
-
-  // step: 1 = Form, 1.5 = Bank Result, 2 = Upload, 3 = Disbursal
-  const location = useLocation();
-  const [applicationId] = useState(
-  () => `RD-${Math.floor(100000 + Math.random() * 900000)}`
+const Field: React.FC<{ label: string; error?: string; hint?: string; children: React.ReactNode }> = ({
+  label,
+  error,
+  hint,
+  children,
+}) => (
+  <label className="block">
+    <span className="mb-1.5 block text-[13px] font-semibold text-gray-900">{label}</span>
+    {children}
+    {error ? (
+      <span className="mt-1 block text-xs font-medium text-red-600">{error}</span>
+    ) : hint ? (
+      <span className="mt-1 block text-xs text-slate-500">{hint}</span>
+    ) : null}
+  </label>
 );
-const [errors, setErrors] = useState<any>({});
-  const [step, setStep] = useState<1 | 1.5 | 2 | 3>(1);
-  const [loading, setLoading] = useState(false);
-const [selectedBank, setSelectedBank] = useState<string | null>(null);
-const [form, setForm] = useState<FormData>({
 
-product: (location as any)?.state?.product || "",
-  fullName: "",
-  mobile: "",
-    email: "", 
-  employment: "",
-  monthlyIncome: "",
-  existingEmi: "",
-  cibil: "",
-  propertyValue: "",
-  courseFee: "",
-  acceptConsent: false,
-});
+const MoneyInput: React.FC<{
+  name: keyof FormState;
+  value: string;
+  placeholder: string;
+  invalid?: boolean;
+  onChange: (name: keyof FormState, value: string) => void;
+}> = ({ name, value, placeholder, invalid, onChange }) => (
+  <div className="relative">
+    <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">₹</span>
+    <input
+      inputMode="numeric"
+      className={`${fieldBase} pl-8 ${invalid ? "border-red-400" : "border-slate-200"}`}
+      placeholder={placeholder}
+      value={groupINR(value)}
+      onChange={(e) => onChange(name, digits(e.target.value).slice(0, 11))}
+    />
+  </div>
+);
 
+const chanceStyle: Record<Offer["chance"], string> = {
+  High: "text-green-700",
+  Good: "text-sky-700",
+  Fair: "text-amber-700",
+};
 
+const LoanEligibilityPage: React.FC = () => {
+  const location = useLocation();
+  const queryProduct = new URLSearchParams(location.search).get("product");
+  const stateProduct = (location.state as { product?: string } | null)?.product;
+  const initialProduct = isProduct(stateProduct) ? stateProduct : isProduct(queryProduct) ? queryProduct : "";
 
-  const [uploadedFiles, setUploadedFiles] = useState<{
-  kyc: File[];
-  incomeProof: File[];
-  bankStatement: File[];
-  other: File[];
-}>({
-  kyc: [],
-  incomeProof: [],
-  bankStatement: [],
-  other: [],
-});
-const resetApplication = () => {
-  setForm({
-    product: "",
+  const [step, setStep] = useState<Step>(1);
+  const [part, setPart] = useState(1);
+  const [crmLogin, setCrmLogin] = useState<{ email: string; password: string | null } | null>(null);
+  const [form, setForm] = useState<FormState>({
+    product: initialProduct,
+    employment: "",
     fullName: "",
     mobile: "",
-     email: "",  
-    employment: "",
+    email: "",
+    city: "",
     monthlyIncome: "",
     existingEmi: "",
-    cibil: "",
+    requestedAmount: "",
+    cibil: "0",
     propertyValue: "",
     courseFee: "",
     acceptConsent: false,
   });
+  const [errors, setErrors] = useState<Partial<Record<keyof FormState, string>>>({});
+  const [selected, setSelected] = useState<string | null>(null);
+  const [sortKey, setSortKey] = useState<SortKey>("amount");
+  const [showUnmatched, setShowUnmatched] = useState(false);
+  const [files, setFiles] = useState<Record<DocBucket, File[]>>(emptyFiles);
+  const [submitting, setSubmitting] = useState(false);
+  const [leadId, setLeadId] = useState("");
 
-  setUploadedFiles({
-    kyc: [],
-    incomeProof: [],
-    bankStatement: [],
-    other: [],
-  });
-
-  setSelectedBank(null);
-  setStep(1);
-};
-
-const downloadApplication = () => {
-  const content = `
-Rupeedial Loan Application
-
-Product: ${form.product}
-Applicant Name: ${form.fullName}
-Mobile: ${form.mobile}
-Employment: ${form.employment}
-Monthly Income: ${form.monthlyIncome}
-Existing EMI: ${form.existingEmi}
-CIBIL Score: ${form.cibil}
-Property Value: ${form.propertyValue || "N/A"}
-
-Application ID: RD-${Math.floor(100000 + Math.random() * 900000)}
-
-Status: Submitted
-`;
-
-  const blob = new Blob([content], { type: "text/plain;charset=utf-8;" });
-  const url = window.URL.createObjectURL(blob);
-
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = "Rupeedial_Application.txt";
-  link.click();
-
-  window.URL.revokeObjectURL(url);
-};
-
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
-  ) => {
-    const { name, value, type } = e.target;
-
-    if (type === "checkbox") {
-      setForm((p) => ({ ...p, [name]: (e.target as HTMLInputElement).checked }));
-      return;
+  useEffect(() => {
+    document.title = "Check Loan Eligibility Online | Compare 20+ Banks | RupeeDial";
+    let meta = document.querySelector('meta[name="description"]');
+    if (!meta) {
+      meta = document.createElement("meta");
+      meta.setAttribute("name", "description");
+      document.head.appendChild(meta);
     }
-
-if (["monthlyIncome", "existingEmi", "cibil", "propertyValue", "courseFee"].includes(name)) {
-  const num = parseFloat(value);
-  setForm((p) => ({
-    ...p,
-    [name]: isNaN(num) ? "" : num,
-  }));
-}
-else {
-  setForm((p) => ({ ...p, [name]: value }));
-}
-setErrors((prev:any) => ({
-  ...prev,
-  [name]: ""
-}));
-setSelectedBank(null);
-};
-  /* ================= STEP 1 SUBMIT ================= */
-
-  const handleEligibilitySubmit = () => {
-    
-  const newErrors: any = {};
-if (
-  (form.product === "Home Loan" ||
-    form.product === "Loan Against Property") &&
-  !form.propertyValue
-) {
-  newErrors.propertyValue = "Required";
-}
-
-if (form.product === "Education Loan" && !form.courseFee) {
-  newErrors.courseFee = "Required";
-}
-if (!form.product) newErrors.product = "Required";
-if (!form.fullName) newErrors.fullName = "Required";
-
-if (!form.mobile) {
-  newErrors.mobile = "Required";
-} else if (!/^[6-9]\d{9}$/.test(form.mobile)) {
-  newErrors.mobile = "Invalid Mobile";
-}
-
-if (!form.email) {
-  newErrors.email = "Required";
-} else if (!/^\S+@\S+\.\S+$/.test(form.email)) {
-  newErrors.email = "Invalid Email";
-}
-if (!form.employment) newErrors.employment = "Required";
-if (!form.monthlyIncome) newErrors.monthlyIncome = "Required";
-
-if (!form.acceptConsent) newErrors.acceptConsent = "Required";
-
-setErrors(newErrors);
-
-if (Object.keys(newErrors).length > 0) return;
-if (!form.product) return;
-const rules = PRODUCT_RULES[form.product as Product];
-
-if (Number(form.monthlyIncome) < rules.minIncome) {
-  alert(`Minimum income required for ${form.product} is ₹${rules.minIncome}`);
-  return;
-}
-if (form.product === "Education Loan" && !form.courseFee) {
-
-  alert("Please enter total course fee for Education Loan");
-  return;
-}
-
-    if (
-      (form.product === "Home Loan" ||
-        form.product === "Loan Against Property") &&
-      !form.propertyValue
-    ) {
-      alert("Property value required for selected product");
-      return;
+    meta.setAttribute(
+      "content",
+      "Check your loan eligibility for personal, home, MSME, education, auto loans and more. Compare eligible amount, interest rate and EMI across 20+ banks & NBFCs instantly with RupeeDial."
+    );
+    let canonical = document.querySelector('link[rel="canonical"]');
+    if (!canonical) {
+      canonical = document.createElement("link");
+      canonical.setAttribute("rel", "canonical");
+      document.head.appendChild(canonical);
     }
+    canonical.setAttribute("href", "https://rupeedial.com/check-eligibility");
+  }, []);
 
-    // Show Bank Results
-setSelectedBank(null);
-setStep(1.5);
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [step]);
+
+  const set = (name: keyof FormState, value: string | boolean) => {
+    setForm((p) => ({ ...p, [name]: value }));
+    setErrors((p) => ({ ...p, [name]: undefined }));
   };
 
-  /* ================= STEP 2 ================= */
+  const input = useMemo(() => {
+    if (!form.product) return null;
+    return {
+      product: form.product,
+      employment: form.employment,
+      monthlyIncome: toNum(form.monthlyIncome),
+      existingEmi: toNum(form.existingEmi),
+      cibil: Number(form.cibil) || 0,
+      propertyValue: toNum(form.propertyValue) || undefined,
+      courseFee: toNum(form.courseFee) || undefined,
+    };
+  }, [form]);
 
-  const requiredDocs = form.product
-    ? DOCUMENT_RULES[form.product]
-    : [];
+  const offers = useMemo(() => (input && input.monthlyIncome > 0 ? evaluateAll(input) : []), [input]);
+  const eligibleOffers = useMemo(() => {
+    const list = offers.filter((o) => o.eligible);
+    return [...list].sort((a, b) =>
+      sortKey === "amount" ? b.amount - a.amount : sortKey === "rate" ? a.rate - b.rate : a.monthly - b.monthly
+    );
+  }, [offers, sortKey]);
+  const unmatched = offers.filter((o) => !o.eligible);
+  const bestAmount = eligibleOffers.reduce((m, o) => Math.max(m, o.amount), 0);
+  const lowestRate = eligibleOffers.reduce((m, o) => Math.min(m, o.rate), Infinity);
+  const amountsAllEqual = eligibleOffers.every((o) => o.amount === bestAmount);
+  const selectedOffer = eligibleOffers.find((o) => o.lender.name === selected) ?? null;
+  const productKind = form.product ? PRODUCTS[form.product].kind : "term";
+  const income = toNum(form.monthlyIncome);
+  const obligation = income ? Math.min(1, toNum(form.existingEmi) / income) : 0;
+  const requested = toNum(form.requestedAmount);
 
- const handleFileChange = (
-  type: "kyc" | "incomeProof" | "bankStatement" | "other",
-  fileList: FileList | null
-) => {
-  if (!fileList) return;
+  const validate = () => {
+    const e: Partial<Record<keyof FormState, string>> = {};
+    if (!form.product) e.product = "Choose a loan product";
+    if (!form.employment) e.employment = "Choose employment type";
+    if (form.fullName.trim().length < 3) e.fullName = "Enter your full name";
+    if (!/^[6-9]\d{9}$/.test(form.mobile)) e.mobile = "Enter a valid 10-digit mobile number";
+    if (!/^\S+@\S+\.\S+$/.test(form.email)) e.email = "Enter a valid email";
+    if (!income) e.monthlyIncome = "Enter your monthly income";
+    else if (form.product && income < PRODUCTS[form.product].minIncome)
+      e.monthlyIncome = `Minimum ₹${PRODUCTS[form.product].minIncome.toLocaleString("en-IN")}/month for ${form.product}`;
+    if (needsPropertyValue(form.product) && !toNum(form.propertyValue)) e.propertyValue = "Enter property value";
+    if (form.product === "Education Loan" && !toNum(form.courseFee)) e.courseFee = "Enter total course fee";
+    if (!form.acceptConsent) e.acceptConsent = "Please accept to continue";
+    setErrors(e);
+    return Object.keys(e).length === 0;
+  };
 
- setUploadedFiles((prev) => ({
-  ...prev,
-  [type]: [
-  ...prev[type],
-  ...Array.from(fileList).filter(
-    (f) => !prev[type].some((pf) => pf.name === f.name)
-  ),
-],
-}));
-};
+  const validatePart = (current: number) => {
+    const e: Partial<Record<keyof FormState, string>> = {};
+    if (current === 1) {
+      if (form.fullName.trim().length < 3) e.fullName = "Enter your full name";
+      if (!/^[6-9]\d{9}$/.test(form.mobile)) e.mobile = "Enter a valid 10-digit mobile number";
+      if (!/^\S+@\S+\.\S+$/.test(form.email)) e.email = "Enter a valid email";
+    }
+    if (current === 2 && !form.product) e.product = "Choose a loan product";
+    if (current === 3) {
+      if (!form.employment) e.employment = "Choose employment type";
+      if (!income) e.monthlyIncome = "Enter your monthly income";
+      else if (form.product && income < PRODUCTS[form.product].minIncome)
+        e.monthlyIncome = `Minimum ₹${PRODUCTS[form.product].minIncome.toLocaleString("en-IN")}/month for ${form.product}`;
+    }
+    if (current === 4) {
+      if (needsPropertyValue(form.product) && !toNum(form.propertyValue)) e.propertyValue = "Enter property value";
+      if (form.product === "Education Loan" && !toNum(form.courseFee)) e.courseFee = "Enter total course fee";
+    }
+    if (current === 5 && !form.acceptConsent) e.acceptConsent = "Please accept to continue";
+    setErrors(e);
+    return Object.keys(e).length === 0;
+  };
 
- const handleUploadContinue = async () => {
-  try {
-   const missing = requiredDocs.filter((doc) => {
-  const key = DOC_KEY_MAP[doc] || "other";
-  return uploadedFiles[key].length === 0;
-});
-
-if (missing.length > 0) {
-  alert("Please upload all required documents");
-  return;
-}
-setLoading(true);
-    const fd = new FormData();
-
-    // 🔹 form JSON
-    fd.append("formData", JSON.stringify(form));
-fd.append("selectedBank", selectedBank || "");
-    // 🔹 documents (keys MUST match backend)
-    uploadedFiles.kyc.forEach((f) => fd.append("kyc[]", f));
-    uploadedFiles.incomeProof.forEach((f) => fd.append("incomeProof[]", f));
-    uploadedFiles.bankStatement.forEach((f) => fd.append("bankStatement[]", f));
-    uploadedFiles.other.forEach((f) => fd.append("other[]", f));
-
-    const res = await fetch(
-  "https://rupeedial.com/rupeedial-backend/public/index.php?action=eligibility/apply",
-  {
-    method: "POST",
-    body: fd,
-  }
-);
-
-
-    const data = await res.json();
-
-    if (!data.success) {
-      alert("Submission failed: " + data.message);
+  const handleCheck = () => {
+    if (!validate()) {
+      document.getElementById("eligibility-form")?.scrollIntoView({ behavior: "smooth", block: "start" });
       return;
     }
-setStep(3);
+    setSelected(null);
+    setStep(2);
+  };
 
+  const continuePart = () => {
+    if (!validatePart(part)) return;
+    if (part >= 5) {
+      handleCheck();
+      return;
+    }
+    setPart((value) => value + 1);
+  };
 
+  const requiredDocs = form.product ? DOCUMENTS[form.product] : [];
+  const docFiles = (doc: string) => files[docBucket(doc)];
 
-  } catch (err) {
-    console.error(err);
-    alert("Server error. Please try again.");
- } finally {
-  setLoading(false);
-}
-};
+  const addFiles = (doc: string, list: FileList | null) => {
+    if (!list) return;
+    const key = docBucket(doc);
+    setFiles((prev) => ({
+      ...prev,
+      [key]: [...prev[key], ...Array.from(list).filter((f) => !prev[key].some((p) => p.name === f.name))],
+    }));
+  };
 
-  return (
-    <main className="bg-[#f8fffb] min-h-screen">
-  {/* HERO */}
-     <section className="bg-gradient-to-b from-[#EFFFF3] to-white border-b border-slate-100">
-  <div className="max-w-7xl mx-auto px-4 py-6 grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-10 items-center">
+  const removeFile = (key: DocBucket, name: string) =>
+    setFiles((prev) => ({ ...prev, [key]: prev[key].filter((f) => f.name !== name) }));
 
-    {/* LEFT */}
-    <div>
-      <h1 className="text-3xl md:text-4xl font-extrabold leading-tight text-[#10662A] mb-3">
-        Check Loan Eligibility
-        <br />
-        <span className="text-[#390A5D]">
-          Across 50+ Banks in Seconds
-        </span>
-      </h1>
+  const handleSubmit = async () => {
+    if (submitting || !selectedOffer) return;
+    setSubmitting(true);
+    try {
+      const fd = new FormData();
+      fd.append(
+        "formData",
+        JSON.stringify({
+          product: form.product,
+          fullName: form.fullName.trim(),
+          mobile: form.mobile,
+          email: form.email.trim(),
+          city: form.city.trim(),
+          employment: form.employment,
+          monthlyIncome: income,
+          existingEmi: toNum(form.existingEmi),
+          cibil: Number(form.cibil) || 0,
+          propertyValue: toNum(form.propertyValue),
+          courseFee: toNum(form.courseFee),
+          requestedAmount: requested,
+          eligibleAmount: selectedOffer.amount,
+          interestRate: selectedOffer.rate,
+          tenureMonths: selectedOffer.tenureMonths,
+          emi: selectedOffer.monthly,
+          acceptConsent: form.acceptConsent,
+        })
+      );
+      fd.append("selectedBank", selectedOffer.lender.name);
+      (Object.keys(files) as DocBucket[]).forEach((k) => files[k].forEach((f) => fd.append(`${k}[]`, f)));
 
-      <p className="text-base text-[#390A5D] mb-6 max-w-lg">
-        One application. Multiple bank offers.  
-        100% digital process with expert assistance.
-      </p>
-
-      <div className="flex flex-col sm:flex-row gap-3">
-       <button
-  onClick={() => {
-    const el = document.getElementById("eligibility-form");
-    el?.scrollIntoView({ behavior: "smooth" });
-  }}
-  className="bg-[#10662A] hover:bg-[#0d5221] text-white px-6 py-3 rounded-lg font-semibold shadow"
->
-  Check Now
-</button>
-
-
-        <a
-          href="/expert"
-          className="border border-[#10662A] text-[#10662A] px-6 py-3 rounded-lg font-semibold hover:bg-green-50"
-        >
-          Talk to Expert
-        </a>
-      </div>
-    </div>
-
-    {/* RIGHT IMAGE */}
-    <div className="flex justify-center">
-      <img
-        src={eligibilities}
-        alt="Eligibility"
-        className="w-full max-w-[280px] sm:max-w-[320px] md:max-w-[380px] object-contain"
-      />
-    </div>
-
-  </div>
-</section>
-<div className="max-w-6xl mx-auto px-4 pt-2">
-  <div className="rounded-lg border border-green-200 bg-white p-3 text-xs text-[#3A4250]">
-    <strong>Disclaimer:</strong> Eligibility shown is indicative, based on user
-inputs and internal models. Final approval, interest rate and disbursal depend
-on bank / NBFC policies.
-
-  </div>
-</div>
-
-{/* ================= STEP 1 : FORM ================= */}
-{step === 1 && (
-  <section id="eligibility-form" className="max-w-4xl mx-auto px-4 py-6">
-    <div className="bg-white rounded-xl border shadow p-6 space-y-3">
-
-      <h2 className="text-xl font-bold text-center text-[#10662A]">
-        Check Loan Eligibility
-      </h2>
-<p className="text-center text-sm text-[#390A5D]  ">
-  Fill the details below to instantly check your loan eligibility in just 30 seconds.
-</p>
-
-<div className="bg-[#EFFFF3] border border-[#B0E9B2] rounded-lg px-4 py-2 text-xs text-[#10662A] flex flex-wrap justify-between gap-3">
-  <span className="font-semibold">How it works:</span>
-
-  <span>1. Select product & employment</span>
-  <span>2. Enter income & details</span>
-  <span>3. Check bank-wise eligibility</span>
-</div>
-
-
-   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-
-  <div>
-    <CreatableSelect<SelectOption, false>
-      options={productSelectOptions}
-      placeholder="Select or type loan product*"
-      isSearchable
-      isClearable
-      value={
-        form.product
-          ? { label: form.product, value: form.product }
-          : null
+      if (import.meta.env.DEV) {
+        const key =
+          (import.meta.env.VITE_CRM_PUBLIC_API_KEY as string | undefined) ||
+          "rupeedial-website-key-change-me";
+        const res = await fetch(`${CRM_API_URL}/api/public/eligibility`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "X-API-Key": key },
+          body: JSON.stringify({
+            full_name: form.fullName.trim(),
+            mobile: form.mobile,
+            email: form.email.trim(),
+            city: form.city.trim(),
+            product: form.product,
+            employment: form.employment,
+            monthly_income: income,
+            existing_emi: toNum(form.existingEmi),
+            requested_amount: requested,
+            cibil: Number(form.cibil) || 0,
+            selected_bank: selectedOffer.lender.name,
+            eligible_amount: selectedOffer.amount,
+            interest_rate: selectedOffer.rate,
+            emi: selectedOffer.monthly,
+            documents: requiredDocs,
+            website_lead_id: `ELIG-${Date.now()}`,
+          }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data?.success) throw new Error(data.detail || data.message || "Submission failed");
+        setLeadId(data.lead_id || "");
+        setCrmLogin({ email: data.email || form.email.trim(), password: data.temporary_password || null });
+        setStep(4);
+        return;
       }
-      onChange={(selected: SingleValue<SelectOption>) => {
-        setForm((prev) => ({
-          ...prev,
-          product: selected ? selected.value : "",
-        }));
 
-        setErrors((prev:any) => ({
-          ...prev,
-          product: ""
-        }));
-      }}
-      styles={{
-        control: (base) => ({
-          ...base,
-          minHeight: "42px",
-          borderColor: errors.product ? "red" : "#cbd5e1",
-        }),
-      }}
-    />
-  </div>
+      const res = await fetch(apiUrl("eligibility/apply"), { method: "POST", body: fd });
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data?.success) throw new Error(data?.message || "Submission failed");
+      setLeadId(data.leadId || "");
+      setStep(4);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Server error. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
-        <select
-          name="employment"
-         className={`${inputClass} ${errors.employment ? "border-red-500" : "border-slate-300"}`}
-          value={form.employment}
-          onChange={handleChange}
-        >
-          <option value="">Employment Type*</option>
-          <option value="Salaried">Salaried</option>
-          <option value="Self-Employed">Self Employed</option>
-          <option value="Business Owner">Business Owner</option>
-        </select>
-      </div>
+  const resetAll = () => {
+    setForm((p) => ({
+      ...p,
+      monthlyIncome: "",
+      existingEmi: "",
+      requestedAmount: "",
+      propertyValue: "",
+      courseFee: "",
+      cibil: "0",
+    }));
+    setFiles(emptyFiles);
+    setSelected(null);
+    setLeadId("");
+    setCrmLogin(null);
+    setPart(1);
+    setStep(1);
+  };
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-        <input
-          name="fullName"
-          placeholder="Full Name*"
-         className={`${inputClass} ${errors.fullName ? "border-red-500" : "border-slate-300"}`}
-          value={form.fullName}
-          onChange={handleChange}
-        />
-        <input
-          name="mobile"
-          inputMode="numeric"
-          maxLength={10}
-          placeholder="Mobile Number*"
-          className={`${inputClass} ${errors.mobile ? "border-red-500" : "border-slate-300"}`}
-          value={form.mobile}
-onChange={(e) => {
-  const value = e.target.value.replace(/\D/g, "");
+  const downloadSummary = () => {
+    if (!selectedOffer) return;
+    const text = [
+      "RupeeDial — Loan Application Summary",
+      "",
+      `Reference ID: ${leadId || "—"}`,
+      `Product: ${form.product}`,
+      `Applicant: ${form.fullName}`,
+      `Mobile: ${form.mobile}`,
+      `Email: ${form.email}`,
+      `Lender: ${selectedOffer.lender.name}`,
+      `Eligible amount: ${formatINR(selectedOffer.amount)}`,
+      `Indicative rate: ${selectedOffer.rate}% p.a.`,
+      productKind === "term" ? `Tenure: ${tenureLabel(selectedOffer.tenureMonths)}` : "",
+      productKind === "term" ? `Estimated EMI: ${formatINR(selectedOffer.monthly)}` : "",
+      "",
+      "Figures are indicative. Final approval depends on lender policy.",
+    ]
+      .filter(Boolean)
+      .join("\n");
+    const url = URL.createObjectURL(new Blob([text], { type: "text/plain;charset=utf-8" }));
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `RupeeDial_${leadId || "Application"}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
-  setForm((prev) => ({
-    ...prev,
-    mobile: value
-  }));
+  const amountLabel = productKind === "card" ? "Card limit" : productKind === "revolving" ? "Facility limit" : "Loan amount";
+  const monthlyLabel = productKind === "revolving" ? "Interest at full use" : "EMI";
 
-  setErrors((prev:any) => ({
-    ...prev,
-    mobile: ""
-  }));
-}}
-        />
-         <input
-    type="email"
-    name="email"
-    placeholder="Email Address*"
-    className={`${inputClass} ${errors.email ? "border-red-500" : "border-slate-300"}`}
-    value={form.email}
-    onChange={handleChange}
-  />
-      </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-        <input
-          type="number"
-          name="monthlyIncome"
-          placeholder="Monthly Income*"
-       className={`${inputClass} ${errors.monthlyIncome ? "border-red-500" : "border-slate-300"}`}
-          value={form.monthlyIncome}
-          onChange={handleChange}
-        />
-       {errors.monthlyIncome && <p className="text-red-500 text-xs">{errors.monthlyIncome}</p>}
-        <input
-          type="number"
-          name="existingEmi"
-          placeholder="Existing EMI"
-       className={`${inputClass} ${errors.existingEmi ? "border-red-500" : "border-slate-300"}`}
-          value={form.existingEmi}
-          onChange={handleChange}
-        />
-{errors.existingEmi && <p className="text-red-500 text-xs">{errors.existingEmi}</p>}
-        <input
-          type="number"
-          name="cibil"
-          placeholder="CIBIL Score"
-          className={`${inputClass} ${errors.cibil ? "border-red-500" : "border-slate-300"}`}
-          value={form.cibil}
-          onChange={handleChange}
-        />
-{errors.cibil && <p className="text-red-500 text-xs">{errors.cibil}</p>}
-      </div>
-
-      {(form.product === "Home Loan" ||
-        form.product === "Loan Against Property") && (
-        <input
-          type="number"
-          name="propertyValue"
-          placeholder="Property Value*"
-         className={`${inputClass} ${errors.propertyValue ? "border-red-500" : "border-slate-300"}`}
-          value={form.propertyValue}
-          onChange={handleChange}
-        />
-        
-      )}
-
-      {form.product === "Education Loan" && (
-        <input
-          type="number"
-          name="courseFee"
-          placeholder="Total Course Fee*"
-          className={`${inputClass} ${errors.courseFee ? "border-red-500" : "border-slate-300"}`}
-          value={form.courseFee || ""}
-          onChange={handleChange}
-        />
-        
-      )}
-
-     
-        <label className={`flex gap-2 text-xs ${errors.acceptConsent ? "text-red-500" : "text-[#390A5D]"}`}>
-<input
-  type="checkbox"
-  name="acceptConsent"
-  checked={form.acceptConsent}
-  onChange={handleChange}
- className={`h-4 w-4 ${errors.acceptConsent ? "ring-2 ring-red-500" : ""}`}
-/>
-      I authorize Rupeedial and its partner banks/NBFCs to contact me via call, SMS,
-WhatsApp or email for loan assistance as per Privacy Policy.
-
-      </label>
-
-      <button
-        onClick={handleEligibilitySubmit}
-        className="w-full bg-[#10662A] hover:bg-[#0d5221] text-white py-3 rounded-lg font-semibold"
-      >
-        Check Eligibility
-      </button>
-
-    </div>
-  </section>
-)}
- 
-      {/* ================= STEP 1.5 : BANK RESULT ================= */}
-
-{step === 1.5 && (() => {
-
-  const bankResults = BANKS.map((bank) => {
-    const eligibleAmount = calculateBankEligibility(
-      bank,
-      Number(form.monthlyIncome),
-      Number(form.existingEmi || 0),
-      Number(form.cibil || 650),
-      form.product as Product,
-      form.employment,
-      form.propertyValue ? Number(form.propertyValue) : undefined,
-      form.courseFee ? Number(form.courseFee) : undefined
-    );
-
-    return { bank, eligibleAmount };
-  }).sort((a, b) => b.eligibleAmount - a.eligibleAmount);
-
- const maxAmount = bankResults.length
-  ? Math.max(...bankResults.map(b => b.eligibleAmount))
-  : 0;
-const filteredBanks = bankResults.filter(b => b.eligibleAmount >= 5000);
-
-if (filteredBanks.length === 0) {
   return (
-    <div className="text-center py-10">
-  <p className="text-red-500 font-semibold text-lg mb-3">
-    No eligible banks found
-  </p>
-
-  <p className="text-sm text-gray-500 mb-5">
-    Try increasing your income, reducing EMI or improving CIBIL score
-  </p>
-
-  <button
-    onClick={() => setStep(1)}
-    className="bg-[#10662A] text-white px-6 py-2 rounded-lg"
-  >
-    Edit Details
-  </button>
-</div>
-  );
-}
-  return (
-    <section className="max-w-6xl mx-auto mt-4 px-4 pb-16">
-      <div className="bg-white rounded-xl border shadow p-6">
-
-        <h2 className="text-xl font-semibold text-center text-[#10662A] mb-6">
-          Bank-wise Eligibility Result
-        </h2>
-
-        <p className="text-xs text-center text-slate-500 mb-3">
-          Please select one bank to proceed with document upload and faster processing.
+    <main className="min-h-screen bg-gray-50 pb-24 sm:pb-12">
+      {/* HERO */}
+      <section className="mx-auto max-w-6xl px-4 pt-8 sm:px-6 sm:pt-12">
+        <h1 className="text-2xl font-extrabold leading-tight text-[#10662A] sm:text-3xl">Check Loan Eligibility</h1>
+        <p className="mt-2 text-sm text-gray-600 sm:text-base">
+          Compare amount, interest rate and EMI from 20+ banks and NBFCs. No effect on your CIBIL score.
         </p>
+        <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-xs text-gray-600 sm:text-sm">
+          <span className="inline-flex items-center gap-1.5"><ShieldCheck className="h-4 w-4 text-[#10662A]" /> No CIBIL impact</span>
+          <span className="inline-flex items-center gap-1.5"><Clock className="h-4 w-4 text-[#10662A]" /> Result in 30 seconds</span>
+          <span className="inline-flex items-center gap-1.5"><Building2 className="h-4 w-4 text-[#10662A]" /> 22 lenders</span>
+        </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-
-     {filteredBanks.map(({ bank, eligibleAmount }) => {
-const rate = getInterestRate(
-  bank,
-  form.product as Product,
-  Number(form.cibil || 650),
-  form.employment
-);
-  const isSelected = selectedBank === bank.name;
-  const isBest = maxAmount > 0 && eligibleAmount === maxAmount;
-
-  return (
-    <div
-      key={bank.name}
-      onClick={() => {
-        setSelectedBank(bank.name);
-      }}
-      className={`
-        border rounded-lg p-4 flex items-center gap-4 cursor-pointer
-        hover:shadow-md
-        ${isSelected ? "border-[#10662A] ring-2 ring-[#10662A]" : ""}
-      `}
-    >
-                <div className="w-24 h-16 flex items-center justify-center flex-shrink-0">
-                  <img
-                    src={bank.logo}
-                    alt={bank.name}
-                    className="max-h-14 max-w-24 object-contain"
-                  />
-                </div>
-
-                <div className="flex-1 text-center sm:text-right">
-                  <p className="font-semibold text-sm">{bank.name}</p>
-
-                  <p className="text-sm text-[#390A5D]">
-                    Eligible ₹ {eligibleAmount.toLocaleString()}
-                  </p>
-
-                  <p className="text-xs text-gray-400">
-                    EMI Factor: {bank.emiFactor}
-                  </p>
-
-              
-               <p className="text-xs text-gray-500">
-  Rate: {rate}%
-</p>
-
-                  <span className="text-green-600 text-xs font-semibold">
-  Eligible
-</span>
-
-{isBest && (
-  <p className="text-blue-600 text-xs font-bold">
-    Best Offer
-  </p>
-)}
-
-                  {isSelected && (
-                    <p className="text-xs mt-1 text-[#10662A] font-semibold">
-                      Selected
-                    </p>
-                  )}
-                </div>
-              </div>
+        {/* STEPPER */}
+        <ol className="mt-6 grid grid-cols-4 gap-2">
+          {STEPS.map((label, i) => {
+            const n = (i + 1) as Step;
+            const done = step > n;
+            const active = step === n;
+            return (
+              <li key={label} className="flex flex-col gap-2">
+                <div className={`h-1.5 rounded-full transition-colors ${done || active ? "bg-[#10662A]" : "bg-[#10662A]/15"}`} />
+                <span className={`flex items-center gap-1.5 text-[11px] font-semibold sm:text-xs ${active ? "text-[#10662A]" : done ? "text-gray-900" : "text-slate-400"}`}>
+                  {done ? <CheckCircle2 className="h-3.5 w-3.5 shrink-0" /> : <span className="hidden sm:inline">{n}.</span>}
+                  <span className="truncate">{label}</span>
+                </span>
+              </li>
             );
           })}
+        </ol>
+      </section>
 
-        </div>
-
-        <div className="flex flex-col sm:flex-row gap-3 mt-8">
-          <button
-  onClick={() => setStep(1)}
-  className="w-full sm:w-auto border border-[#10662A] text-[#10662A] px-6 py-3 rounded-lg"
->
-            Back
-          </button>
-
-          <button
-            onClick={() => {
-              if (!selectedBank) {
-                alert("Please select a bank to continue");
-                return;
-              }
-              setStep(2);
-            }}
-          
-  className="w-full sm:w-auto bg-[#10662A] hover:bg-[#0d5221] text-white px-6 py-3 rounded-lg font-semibold"
->
-            Continue to Upload Documents
-          </button>
-        </div>
-
-      </div>
-    </section>
-  );
-
-})()}
-   
-      {/* ================= STEP 2 : UPLOAD ================= */}
-      {step === 2 && (
-        <section className="max-w-4xl mx-auto mt-4 px-4 pb-16">
-          <div className="bg-white rounded-xl border shadow p-6 space-y-6">
-
-            <h2 className="text-xl font-bold text-center text-[#10662A]">
-              Upload Documents – {form.product}
+      {/* STEP 1 — FORM */}
+      {step === 1 && (
+        <section id="eligibility-form" className="mx-auto mt-6 grid max-w-6xl gap-6 px-4 sm:px-6 lg:grid-cols-[1fr_340px]">
+          <div className="rd-rise rd-rise-delay-2 rounded-xl border border-[#e2efe6] bg-white p-5 shadow-sm sm:p-8">
+            <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#10662A]">Step {part} of 5</p>
+            <h2 className="text-lg font-bold text-gray-900">
+              {["Basic details", "Product", "Income / business", "Requirement", "Bureau consent"][part - 1]}
             </h2>
 
-            <div className="space-y-4">
-              {requiredDocs.map((doc) => (
-                <div
-                  key={doc}
-                  className="flex flex-col md:flex-row md:items-center gap-4 border p-4 rounded-lg"
-                >
-                  <div className="flex-1">
-                    <p className="font-semibold text-[#390A5D]">{doc}</p>
-                    <p className="text-xs text-gray-500">
-                      Upload clear scanned copy
-                    </p>
-                  </div>
-
-                  <input
-  type="file"
-  multiple                    // 🔥 MULTIPLE VERY IMPORTANT
-  onChange={(e) => {
-    const key = DOC_KEY_MAP[doc] || "other";   // 👈 "kyc" | "incomeProof" | ...
-    handleFileChange(key, e.target.files);
-  }}
-  className="text-sm"
-/>
-
+            {part === 2 && (
+            <div className="mt-6 grid gap-4 sm:grid-cols-2">
+              <Field label="Loan product*" error={errors.product}>
+                <div className="relative">
+                  <select
+                    className={`${fieldBase} appearance-none pr-10 ${errors.product ? "border-red-400" : "border-slate-200"}`}
+                    value={form.product}
+                    onChange={(e) => set("product", e.target.value)}
+                  >
+                    <option value="">Select a product</option>
+                    {PRODUCT_GROUPS.map((g) => (
+                      <optgroup key={g.label} label={g.label}>
+                        {g.items.map((p) => (
+                          <option key={p} value={p}>
+                            {p}
+                          </option>
+                        ))}
+                      </optgroup>
+                    ))}
+                  </select>
+                  <ChevronDown className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                 </div>
-              ))}
+                </Field>
             </div>
+            )}
 
-            <div className="flex flex-col sm:flex-row gap-3 pt-6">
+            {part === 3 && (
+            <div className="mt-6 grid gap-4 sm:grid-cols-2">
+              <Field label="Employment type*" error={errors.employment}>
+                <div className="grid grid-cols-3 gap-2 sm:col-span-2">
+                  {(["Salaried", "Self-Employed", "Business Owner"] as Employment[]).map((opt) => (
+                    <button
+                      key={opt}
+                      type="button"
+                      onClick={() => set("employment", opt)}
+                      className={`h-12 rounded-xl border px-2 text-[13px] font-semibold leading-tight transition ${
+                        form.employment === opt
+                          ? "border-[#10662A] bg-[#E8F7EC] text-[#10662A] ring-2 ring-[#10662A]/15"
+                          : errors.employment
+                            ? "border-red-300 text-slate-600"
+                            : "border-slate-200 text-slate-600 hover:border-[#10662A]/40"
+                      }`}
+                    >
+                      {opt === "Self-Employed" ? "Self employed" : opt === "Business Owner" ? "Business" : opt}
+                    </button>
+                  ))}
+                </div>
+              </Field>
+              <Field label={`${incomeLabel(form.product)}*`} error={errors.monthlyIncome}>
+                <MoneyInput name="monthlyIncome" value={form.monthlyIncome} placeholder="e.g. 50,000" invalid={!!errors.monthlyIncome} onChange={set} />
+              </Field>
+              <Field label="Existing EMIs per month" hint="Total of all current loan EMIs. Leave empty if none.">
+                <MoneyInput name="existingEmi" value={form.existingEmi} placeholder="0" onChange={set} />
+              </Field>
+            </div>
+            )}
+
+            {part === 4 && (
+            <div className="mt-6 grid gap-4 sm:grid-cols-2">
+              <Field label="Amount you need" hint="Optional — helps us highlight matching offers">
+                <MoneyInput name="requestedAmount" value={form.requestedAmount} placeholder="e.g. 5,00,000" onChange={set} />
+              </Field>
+              {needsPropertyValue(form.product) && (
+                <Field label="Property market value*" error={errors.propertyValue}>
+                  <MoneyInput name="propertyValue" value={form.propertyValue} placeholder="e.g. 50,00,000" invalid={!!errors.propertyValue} onChange={set} />
+                </Field>
+              )}
+              {form.product === "Education Loan" && (
+                <Field label="Total course fee*" error={errors.courseFee}>
+                  <MoneyInput name="courseFee" value={form.courseFee} placeholder="e.g. 12,00,000" invalid={!!errors.courseFee} onChange={set} />
+                </Field>
+              )}
+            </div>
+            )}
+
+            {part === 1 && (
+            <div className="mt-6 grid gap-4 sm:grid-cols-2">
+              <Field label="Full name*" error={errors.fullName}>
+                <input
+                  className={`${fieldBase} ${errors.fullName ? "border-red-400" : "border-slate-200"}`}
+                  placeholder="As per PAN"
+                  value={form.fullName}
+                  onChange={(e) => set("fullName", e.target.value)}
+                />
+              </Field>
+              <Field label="Mobile number*" error={errors.mobile}>
+                <div className="relative">
+                  <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-sm text-slate-400">+91</span>
+                  <input
+                    inputMode="numeric"
+                    className={`${fieldBase} pl-12 ${errors.mobile ? "border-red-400" : "border-slate-200"}`}
+                    placeholder="10-digit mobile"
+                    value={form.mobile}
+                    onChange={(e) => set("mobile", digits(e.target.value).slice(0, 10))}
+                  />
+                </div>
+              </Field>
+              <Field label="Email*" error={errors.email}>
+                <input
+                  type="email"
+                  className={`${fieldBase} ${errors.email ? "border-red-400" : "border-slate-200"}`}
+                  placeholder="you@example.com"
+                  value={form.email}
+                  onChange={(e) => set("email", e.target.value)}
+                />
+              </Field>
+              <Field label="City">
+                <input className={`${fieldBase} border-slate-200`} placeholder="e.g. Delhi" value={form.city} onChange={(e) => set("city", e.target.value)} />
+              </Field>
+            </div>
+            )}
+
+            {part === 5 && (
+            <>
+            <div className="mt-6 max-w-md">
+              <Field label="CIBIL score" hint={form.cibil === "0" ? `We'll assume ${ASSUMED_CIBIL} until a bureau check. This does not hit your score.` : undefined}>
+                <div className="relative">
+                  <select
+                    className={`${fieldBase} appearance-none border-slate-200 pr-10`}
+                    value={form.cibil}
+                    onChange={(e) => set("cibil", e.target.value)}
+                  >
+                    {CIBIL_BANDS.map((b) => (
+                      <option key={b.value} value={b.value}>
+                        {b.label}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                </div>
+              </Field>
+            </div>
+            <label className={`mt-6 flex cursor-pointer items-start gap-3 rounded-xl border p-3.5 text-xs leading-relaxed ${errors.acceptConsent ? "border-red-300 bg-red-50/50 text-red-700" : "border-slate-200 text-gray-600"}`}>
+              <input
+                type="checkbox"
+                className="mt-0.5 h-4 w-4 shrink-0 accent-[#10662A]"
+                checked={form.acceptConsent}
+                onChange={(e) => set("acceptConsent", e.target.checked)}
+              />
+              <span>
+                I authorise RupeeDial and its partner banks/NBFCs to contact me by call, SMS, WhatsApp or email about my loan, as per the{" "}
+                <Link to="/privacy-policy" className="font-semibold text-[#10662A] underline">
+                  Privacy Policy
+                </Link>
+                .
+              </span>
+            </label>
+            </>
+            )}
+
+            <div className="mt-6 flex gap-2">
+              {part > 1 && (
+                <button type="button" onClick={() => setPart((value) => value - 1)} className="rounded-xl border border-[#10662A]/35 px-4 text-sm font-semibold text-[#10662A]">
+                  Back
+                </button>
+              )}
               <button
-                onClick={() => setStep(1.5)}
-                className="w-full sm:w-auto border border-[#10662A] text-[#10662A] px-6 py-3 rounded-lg"
+                type="button"
+                onClick={continuePart}
+                className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-[#10662A] py-3.5 text-[15px] font-semibold text-white transition hover:bg-[#0c5222]"
               >
-                Back
+                {part < 5 ? "Continue" : "See matched offers"} <ArrowRight className="h-4 w-4" />
               </button>
+            </div>
+            <p className="mt-3 flex items-center justify-center gap-1.5 text-xs text-slate-500">
+              <Lock className="h-3.5 w-3.5" /> Your details are encrypted and never shared without consent
+            </p>
+          </div>
 
-             <button
-  onClick={handleUploadContinue}
-  disabled={loading}
-                className="w-full sm:w-auto bg-[#10662A] hover:bg-[#0d5221] text-white px-6 py-3 rounded-lg font-semibold"
+          {/* LIVE ESTIMATE */}
+          <aside className="rd-rise rd-rise-delay-3 lg:sticky lg:top-[calc(var(--header-h)+1.5rem)] lg:self-start">
+            <div className="rounded-xl border border-green-200 bg-white p-5 shadow-sm">
+              <p className="text-sm font-semibold text-gray-900">Your estimate</p>
+              {bestAmount > 0 ? (
+                <>
+                  <p className="mt-3 text-xs text-gray-500">You may get up to</p>
+                  <p className="text-2xl font-extrabold tabular-nums text-[#10662A]">{formatShortINR(bestAmount)}</p>
+                  <p className="mt-1 text-xs text-gray-600">
+                    {eligibleOffers.length} lender{eligibleOffers.length === 1 ? "" : "s"} match
+                    {Number.isFinite(lowestRate) && productKind !== "card" ? ` · rates from ${lowestRate}%` : ""}
+                  </p>
+                  {requested > 0 && (
+                    <p className={`mt-3 rounded-lg px-3 py-2 text-xs font-medium ${requested <= bestAmount ? "bg-green-50 text-green-800" : "bg-amber-50 text-amber-800"}`}>
+                      {requested <= bestAmount
+                        ? `${formatShortINR(requested)} is within your eligibility`
+                        : `${formatShortINR(requested)} is more than your current eligibility`}
+                    </p>
+                  )}
+                </>
+              ) : (
+                <p className="mt-2 text-xs leading-relaxed text-gray-500">
+                  {form.product
+                    ? `Enter your ${incomeLabel(form.product).toLowerCase()} to see your estimate.`
+                    : "Select a product and enter your income to see your estimate."}
+                </p>
+              )}
+
+              {income > 0 && productKind === "term" && (
+                <div className="mt-4 border-t border-gray-100 pt-3">
+                  <div className="flex justify-between text-xs text-gray-600">
+                    <span>Income going to EMIs</span>
+                    <span className="font-semibold text-gray-900">{Math.round(obligation * 100)}%</span>
+                  </div>
+                  <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-gray-100">
+                    <div
+                      className={`h-full rounded-full ${obligation > 0.5 ? "bg-amber-400" : "bg-[#10662A]"}`}
+                      style={{ width: `${Math.max(3, obligation * 100)}%` }}
+                    />
+                  </div>
+                  <p className="mt-1.5 text-[11px] text-gray-500">Banks prefer this below 50%.</p>
+                </div>
+              )}
+            </div>
+            <div className="mt-4 rounded-2xl border border-[#e2efe6] bg-white p-5 text-sm text-gray-600">
+              <p className="font-semibold text-gray-900">Need help choosing?</p>
+              <p className="mt-1 text-xs leading-relaxed">Talk to a RupeeDial loan expert — free, no obligation.</p>
+              <Link to="/expert" className="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-[#10662A]">
+                <PhoneCall className="h-4 w-4" /> Talk to an expert
+              </Link>
+            </div>
+          </aside>
+        </section>
+      )}
+
+      {/* STEP 2 — OFFERS */}
+      {step === 2 && (
+        <section className="mx-auto mt-6 max-w-6xl px-4 sm:px-6">
+          <div className="mb-4 rounded-xl border border-[#e2efe6] bg-white p-4 text-sm text-gray-700">
+            <p className="font-semibold text-gray-900">Next best action</p>
+            <p className="mt-1">Pick a matched offer, then upload documents. Lender decisioning stays with the bank. Need help?</p>
+            <Link to="/expert" className="mt-2 inline-flex items-center gap-1.5 font-semibold text-[#10662A]">
+              <PhoneCall className="h-4 w-4" /> Talk to an expert
+            </Link>
+          </div>
+          {eligibleOffers.length === 0 ? (
+            <div className="rd-rise rounded-xl border border-[#e2efe6] bg-white p-8 text-center shadow-sm sm:p-12">
+              <p className="text-xl font-bold text-gray-900">No lender matches yet</p>
+              <p className="mx-auto mt-2 max-w-md text-sm text-gray-600">
+                {unmatched[0]?.reason ?? "Try adjusting your details."} Reducing existing EMIs, adding a co-applicant or improving your CIBIL score usually helps.
+              </p>
+              <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
+                <button type="button" onClick={() => setStep(1)} className="rounded-xl border border-[#10662A]/40 px-6 py-3 text-sm font-semibold text-[#10662A]">
+                  Edit details
+                </button>
+                <Link to="/expert" className="rounded-xl bg-[#10662A] px-6 py-3 text-sm font-semibold text-white">
+                  Talk to an expert
+                </Link>
+              </div>
+            </div>
+          ) : (
+            <>
+              <div className="rd-rise grid gap-3 rounded-xl border border-[#e2efe6] bg-white p-5 shadow-sm sm:grid-cols-3 sm:p-6">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Highest {amountLabel.toLowerCase()}</p>
+                  <p className="mt-0.5 text-xl font-extrabold tabular-nums text-[#10662A]">{formatShortINR(bestAmount)}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{productKind === "card" ? "Product" : "Lowest rate"}</p>
+                  <p className="mt-0.5 text-xl font-extrabold text-gray-900">{productKind === "card" ? "Credit card" : `${lowestRate}%`}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Matching lenders</p>
+                  <p className="mt-0.5 text-xl font-extrabold text-gray-900">
+                    {eligibleOffers.length}
+                    <span className="text-lg font-semibold text-slate-400"> / {offers.length}</span>
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-sm text-gray-600">
+                  Select one lender for <span className="font-semibold text-gray-900">{form.product}</span>
+                  {form.cibil === "0" && <span className="text-slate-400"> · assuming CIBIL {ASSUMED_CIBIL}</span>}
+                </p>
+                <div className="flex w-full rounded-xl border border-[#d8ecdd] bg-white p-1 sm:w-auto">
+                  {(
+                    [
+                      ["amount", "Highest amount"],
+                      ["rate", "Lowest rate"],
+                      ...(productKind === "card" ? [] : [["monthly", productKind === "revolving" ? "Lowest cost" : "Lowest EMI"]]),
+                    ] as [SortKey, string][]
+                  ).map(([k, label]) => (
+                    <button
+                      key={k}
+                      type="button"
+                      onClick={() => setSortKey(k)}
+                      className={`flex-1 rounded-lg px-3 py-2 text-xs font-semibold transition sm:flex-none ${sortKey === k ? "bg-[#10662A] text-white" : "text-gray-600 hover:text-gray-900"}`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="mt-4 overflow-hidden rounded-xl border border-gray-200 bg-white">
+                <div className="hidden grid-cols-[minmax(0,2fr)_1fr_1fr_1fr_1fr_24px] items-center gap-3 border-b border-gray-200 bg-gray-50 px-4 py-2 text-xs font-semibold text-gray-500 md:grid">
+                  <span>Bank</span>
+                  <span>{amountLabel}</span>
+                  <span>Interest rate</span>
+                  <span>{productKind === "term" ? "Tenure" : "Review"}</span>
+                  <span>{productKind === "card" ? "Fee" : monthlyLabel}</span>
+                  <span />
+                </div>
+                {eligibleOffers.map((o) => {
+                  const isSel = selected === o.lender.name;
+                  const showBestAmount = !amountsAllEqual && o.amount === bestAmount;
+                  const showLowestRate = productKind !== "card" && o.rate === lowestRate;
+                  const rateText = productKind === "card" ? "~3% pm" : `${o.rate}%`;
+                  const tenureText =
+                    productKind === "term" ? tenureLabel(o.tenureMonths) : productKind === "card" ? "—" : "Yearly";
+                  const monthlyText = productKind === "card" ? "Varies" : formatINR(o.monthly);
+                  return (
+                    <button
+                      type="button"
+                      key={o.lender.name}
+                      onClick={() => setSelected(o.lender.name)}
+                      className={`grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2 border-b border-gray-100 px-4 py-3 text-left transition last:border-b-0 md:grid-cols-[minmax(0,2fr)_1fr_1fr_1fr_1fr_24px] ${
+                        isSel ? "bg-green-50" : "hover:bg-gray-50"
+                      }`}
+                    >
+                      <div className="flex min-w-0 items-center gap-3">
+                        <img src={o.lender.logo} alt="" className="h-8 w-12 shrink-0 object-contain" loading="lazy" />
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-semibold text-gray-900">{o.lender.name}</p>
+                          <p className="flex flex-wrap items-center gap-x-2 text-xs text-gray-500">
+                            {LENDER_KIND_LABEL[o.lender.kind]}
+                            {showLowestRate && <span className="font-semibold text-[#10662A]">Lowest rate</span>}
+                            {showBestAmount && <span className="font-semibold text-[#10662A]">Highest amount</span>}
+                            <span className={chanceStyle[o.chance]}>{o.chance} chance</span>
+                          </p>
+                        </div>
+                      </div>
+
+                      <span
+                        className={`grid h-5 w-5 shrink-0 place-items-center rounded-full border-2 md:order-last ${isSel ? "border-[#10662A] bg-[#10662A]" : "border-gray-300"}`}
+                        aria-hidden
+                      >
+                        {isSel && <span className="h-2 w-2 rounded-full bg-white" />}
+                      </span>
+
+                      <div className="col-span-2 grid grid-cols-4 gap-2 text-xs md:col-span-4 md:text-sm">
+                        <p>
+                          <span className="block text-gray-500 md:hidden">Amount</span>
+                          <span className="font-bold text-[#10662A]">{formatShortINR(o.amount)}</span>
+                        </p>
+                        <p>
+                          <span className="block text-gray-500 md:hidden">Rate</span>
+                          <span className="font-semibold text-gray-900">{rateText}</span>
+                        </p>
+                        <p>
+                          <span className="block text-gray-500 md:hidden">{productKind === "term" ? "Tenure" : "Review"}</span>
+                          <span className="font-semibold text-gray-900">{tenureText}</span>
+                        </p>
+                        <p>
+                          <span className="block text-gray-500 md:hidden">{productKind === "card" ? "Fee" : monthlyLabel}</span>
+                          <span className="font-semibold text-gray-900">{monthlyText}</span>
+                        </p>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+              {requested > 0 && eligibleOffers.some((o) => o.amount >= requested) && (
+                <p className="mt-2 text-xs text-gray-500">
+                  Banks showing {formatShortINR(requested)} or more can cover the amount you asked for.
+                </p>
+              )}
+
+              {unmatched.length > 0 && (
+                <div className="mt-6 rounded-2xl border border-[#e2efe6] bg-white/70">
+                  <button
+                    type="button"
+                    onClick={() => setShowUnmatched((v) => !v)}
+                    className="flex w-full items-center justify-between px-5 py-4 text-sm font-semibold text-gray-600"
+                  >
+                    {unmatched.length} lender{unmatched.length === 1 ? "" : "s"} didn't match — see why
+                    <ChevronDown className={`h-4 w-4 transition ${showUnmatched ? "rotate-180" : ""}`} />
+                  </button>
+                  {showUnmatched && (
+                    <ul className="grid gap-2 border-t border-[#eef5f0] p-4 sm:grid-cols-2">
+                      {unmatched.map((o) => (
+                        <li key={o.lender.name} className="flex items-center gap-3 rounded-xl bg-white px-3 py-2.5 text-xs">
+                          <img src={o.lender.logo} alt="" className="h-6 w-10 object-contain opacity-60" loading="lazy" />
+                          <span className="min-w-0">
+                            <span className="block font-semibold text-gray-900">{o.lender.name}</span>
+                            <span className="text-slate-500">{o.reason}</span>
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
+
+              <div className="fixed inset-x-0 bottom-0 z-40 border-t border-[#e2efe6] bg-white/95 px-4 py-3 backdrop-blur sm:static sm:mt-8 sm:border-0 sm:bg-transparent sm:p-0">
+                <div className="mx-auto flex max-w-6xl items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setStep(1)}
+                    className="flex h-12 items-center gap-1.5 rounded-xl border border-[#10662A]/35 px-4 text-sm font-semibold text-[#10662A] sm:px-6"
+                  >
+                    <ArrowLeft className="h-4 w-4" /> <span className="hidden sm:inline">Edit details</span>
+                  </button>
+                  <button
+                    type="button"
+                    disabled={!selectedOffer}
+                    onClick={() => setStep(3)}
+                    className="flex h-12 flex-1 items-center justify-center gap-2 rounded-xl bg-[#10662A] px-6 text-sm font-semibold text-white hover:bg-[#0c5222] transition disabled:cursor-not-allowed disabled:opacity-50 sm:flex-none"
+                  >
+                    {selectedOffer ? `Continue with ${selectedOffer.lender.name}` : "Select a lender to continue"}
+                    <ArrowRight className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
+        </section>
+      )}
+
+      {/* STEP 3 — DOCUMENTS */}
+      {step === 3 && selectedOffer && (
+        <section className="mx-auto mt-6 grid max-w-6xl gap-6 px-4 sm:px-6 lg:grid-cols-[1fr_340px]">
+          <div className="rd-rise rounded-xl border border-[#e2efe6] bg-white p-5 shadow-sm sm:p-8">
+            <h2 className="text-lg font-bold text-gray-900">Upload documents</h2>
+            <p className="mt-1 text-sm text-gray-600">
+              Optional now — uploading speeds up approval. You can also share them later with your RupeeDial expert.
+            </p>
+
+            <ul className="mt-6 space-y-3">
+              {requiredDocs.map((doc) => {
+                const bucket = docBucket(doc);
+                const list = docFiles(doc);
+                return (
+                  <li key={doc} className="rounded-2xl border border-slate-200 p-4">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="flex items-center gap-3">
+                        <span className={`grid h-9 w-9 place-items-center rounded-full ${list.length ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-400"}`}>
+                          {list.length ? <CheckCircle2 className="h-5 w-5" /> : <FileUp className="h-4 w-4" />}
+                        </span>
+                        <div>
+                          <p className="text-sm font-semibold text-gray-900">{doc}</p>
+                          <p className="text-xs text-slate-500">PDF, JPG or PNG</p>
+                        </div>
+                      </div>
+                      <label className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-[#10662A]/35 px-4 py-2.5 text-sm font-semibold text-[#10662A] hover:bg-[#E8F7EC]">
+                        <FileUp className="h-4 w-4" /> Choose file
+                        <input
+                          type="file"
+                          multiple
+                          accept=".pdf,.jpg,.jpeg,.png"
+                          className="sr-only"
+                          onChange={(e) => {
+                            addFiles(doc, e.target.files);
+                            e.target.value = "";
+                          }}
+                        />
+                      </label>
+                    </div>
+                    {list.length > 0 && (
+                      <ul className="mt-3 flex flex-wrap gap-2">
+                        {list.map((f) => (
+                          <li key={f.name} className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-[#f4faf6] py-1 pl-3 pr-1 text-xs text-gray-900">
+                            <span className="truncate">{f.name}</span>
+                            <button type="button" onClick={() => removeFile(bucket, f.name)} className="grid h-5 w-5 place-items-center rounded-full hover:bg-white" aria-label={`Remove ${f.name}`}>
+                              <X className="h-3 w-3" />
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+
+            <div className="mt-8 flex flex-col-reverse gap-3 sm:flex-row">
+              <button type="button" onClick={() => setStep(2)} className="flex h-12 items-center justify-center gap-1.5 rounded-xl border border-[#10662A]/35 px-6 text-sm font-semibold text-[#10662A]">
+                <ArrowLeft className="h-4 w-4" /> Back to offers
+              </button>
+              <button
+                type="button"
+                onClick={handleSubmit}
+                disabled={submitting}
+                className="flex h-12 flex-1 items-center justify-center gap-2 rounded-xl bg-[#10662A] px-6 text-sm font-semibold text-white hover:bg-[#0c5222] disabled:opacity-60"
               >
-              {loading ? "Submitting..." : "Continue to Disbursal"}
+                {submitting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" /> Submitting…
+                  </>
+                ) : (
+                  <>
+                    Submit application <ArrowRight className="h-4 w-4" />
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+
+          <aside className="rd-rise rd-rise-delay-1 lg:sticky lg:top-[calc(var(--header-h)+1.5rem)] lg:self-start">
+            <div className="rounded-xl border border-[#e2efe6] bg-white p-6 shadow-sm">
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Your selected offer</p>
+              <div className="mt-3 flex items-center gap-3">
+                <img src={selectedOffer.lender.logo} alt="" className="h-10 w-14 object-contain" />
+                <p className="font-semibold text-gray-900">{selectedOffer.lender.name}</p>
+              </div>
+              <dl className="mt-5 space-y-2.5 text-sm">
+                <div className="flex justify-between"><dt className="text-slate-500">{form.product}</dt><dd className="font-bold text-[#10662A]">{formatINR(selectedOffer.amount)}</dd></div>
+                {productKind !== "card" && <div className="flex justify-between"><dt className="text-slate-500">Rate</dt><dd className="font-semibold text-gray-900">{selectedOffer.rate}% p.a.</dd></div>}
+                {productKind === "term" && (
+                  <>
+                    <div className="flex justify-between"><dt className="text-slate-500">Tenure</dt><dd className="font-semibold text-gray-900">{tenureLabel(selectedOffer.tenureMonths)}</dd></div>
+                    <div className="flex justify-between"><dt className="text-slate-500">EMI</dt><dd className="font-semibold text-gray-900">{formatINR(selectedOffer.monthly)}</dd></div>
+                  </>
+                )}
+              </dl>
+            </div>
+          </aside>
+        </section>
+      )}
+
+      {/* STEP 4 — DONE */}
+      {step === 4 && selectedOffer && (
+        <section className="mx-auto mt-6 max-w-2xl px-4 sm:px-6">
+          <div className="rd-rise rounded-xl border border-[#e2efe6] bg-white p-6 text-center shadow-sm sm:p-10">
+            <div className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-[#E8F7EC]">
+              <CheckCircle2 className="h-8 w-8 text-[#10662A]" />
+            </div>
+            <h2 className="mt-4 text-xl font-bold text-gray-900 sm:text-2xl">Application submitted</h2>
+            <p className="mt-2 text-sm text-gray-600">
+              A RupeeDial expert will call you within 24 working hours to take your {form.product} forward with {selectedOffer.lender.name}.
+            </p>
+
+            <dl className="mt-6 grid gap-3 rounded-2xl bg-[#f4faf6] p-5 text-left text-sm sm:grid-cols-2">
+              <div><dt className="text-xs text-slate-500">Reference ID</dt><dd className="font-mono font-semibold text-gray-900">{leadId || "—"}</dd></div>
+              <div><dt className="text-xs text-slate-500">Applicant</dt><dd className="font-semibold text-gray-900">{form.fullName}</dd></div>
+              <div><dt className="text-xs text-slate-500">Lender</dt><dd className="font-semibold text-gray-900">{selectedOffer.lender.name}</dd></div>
+              <div><dt className="text-xs text-slate-500">{amountLabel}</dt><dd className="font-semibold text-[#10662A]">{formatINR(selectedOffer.amount)}</dd></div>
+            </dl>
+
+            {crmLogin && (
+              <div className="mt-6 rounded-2xl border border-[#d7eadb] bg-white p-4 text-left text-sm">
+                <p className="font-semibold text-[#390A5D]">Your customer login</p>
+                <p className="mt-1 text-[#5c4d72]">Email {crmLogin.email}</p>
+                {crmLogin.password ? <p className="mt-1 text-[#5c4d72]">Password {crmLogin.password}</p> : <p className="mt-1 text-[#5c4d72]">Use the password from your first eligibility check.</p>}
+                <a href={`${CRM_APP_URL}/auth`} className="mt-3 inline-flex font-semibold text-[#10662A]">Open customer dashboard</a>
+              </div>
+            )}
+
+            <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-center">
+              <button type="button" onClick={downloadSummary} className="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-[#10662A] px-6 text-sm font-semibold text-white">
+                <Download className="h-4 w-4" /> Download summary
+              </button>
+              <button type="button" onClick={resetAll} className="h-12 rounded-xl border border-[#10662A]/35 px-6 text-sm font-semibold text-[#10662A]">
+                Check another product
               </button>
             </div>
           </div>
         </section>
       )}
- <section className="max-w-5xl mx-auto px-4 pb-12">
-    <div className="mt-8 bg-[#F5FFF9] border border-[#E0F3E6] rounded-xl p-6">
 
-      <h3 className="text-lg font-semibold text-center text-[#10662A] mb-4">
-        Why Choose Rupeedial?
-      </h3>
-
-      <div className="grid md:grid-cols-2 gap-x-10 gap-y-2 text-sm md:text-[15px] text-[#390A5D]">
-        <div className="space-y-2">
-          <p>• Real-time service provider with 100% customer satisfaction.</p>
-          <p>• Paper work assistance and guided documentation.</p>
-          <p>• Option for paperless processing wherever possible.</p>
-          <p>• Better, negotiated offers from multiple partners.</p>
-          <p>• Easy comparison across multiple loan options.</p>
-          <p>• No hidden charges – full transparency.</p>
-        </div>
-
-        <div className="space-y-2">
-          <p>• Competitive and lower interest rates where eligible.</p>
-          <p>• Quick approval and disbursal focused on urgent needs.</p>
-          <p>
-            • Tailored financial solutions for Indian consumers and business
-            entities.
-          </p>
-          <p>• Safe, secure and convenient process.</p>
-          <p>• Everything finance in one place.</p>
-          <p>• Friendly and responsive customer support.</p>
-        </div>
-      </div>
-    </div>
-  </section>
-      {/* ================= STEP 3 : DISBURSAL ================= */}
-      {step === 3 && (
-        <section className="max-w-3xl mx-auto px-4 pb-20">
-          <div className="bg-white rounded-xl border shadow p-8 text-center space-y-6">
-
-            <div className="flex justify-center">
-              <div className="w-20 h-20 rounded-full mt-8 bg-green-100 flex items-center justify-center">
-                <span className="text-3xl">🎉</span>
+      {/* TRUST */}
+      {step !== 4 && (
+        <section className="mx-auto mt-12 max-w-6xl px-4 sm:px-6">
+          <div className="grid gap-4 sm:grid-cols-3">
+            {[
+              { t: "Negotiated offers", d: "We compare 20+ banks & NBFCs and negotiate better terms on your behalf." },
+              { t: "Guided paperwork", d: "A dedicated expert helps with documents — paperless wherever possible." },
+              { t: "No hidden charges", d: "Checking eligibility is free and never affects your credit score." },
+            ].map((c) => (
+              <div key={c.t} className="rounded-2xl border border-[#e2efe6] bg-white/80 p-5">
+                <CheckCircle2 className="h-5 w-5 text-[#10662A]" />
+                <p className="mt-3 font-semibold text-gray-900">{c.t}</p>
+                <p className="mt-1 text-sm leading-relaxed text-gray-600">{c.d}</p>
               </div>
-            </div>
-
-            <h2 className="text-2xl font-bold text-[#10662A]">
-              Application Submitted Successfully
-            </h2>
-
-            <p className="text-[#390A5D]">
-              Your <span className="font-semibold">{form.product}</span>{" "}
-              application is under review.
-            </p>
-
-            <div className="bg-[#EFFFF3] rounded-lg p-4 text-left space-y-2">
-              <p className="text-sm">
-                <span className="font-semibold">Product:</span>{" "}
-                {form.product}
-              </p>
-              <p className="text-sm">
-                <span className="font-semibold">Applicant:</span>{" "}
-                {form.fullName}
-              </p>
-              <p className="text-sm">
-                <span className="font-semibold">Application ID:</span>{" "}
-                {applicationId}
-              </p>
-              <p className="text-sm">
-                <span className="font-semibold">Expected Response:</span>{" "}
-                Within 24–48 hours
-              </p>
-            </div>
-
-          <div className="flex flex-col sm:flex-row gap-4 justify-center pt-6">
-
-  <button
-    onClick={downloadApplication}
-    className="bg-[#10662A] hover:bg-[#0d5221] text-white px-6 py-3 rounded-lg font-semibold"
-  >
-    Download Application
-  </button>
-
-  <button
-  onClick={resetApplication}
-  className="bg-[#10662A] hover:bg-[#0d5221] text-white px-6 py-3 rounded-lg font-semibold"
->
-  Start New Application
-</button>
-
-
-  <a
-    href="/expert"
-    className="border border-[#10662A] text-[#10662A] px-6 py-3 rounded-lg font-semibold hover:bg-green-50"
-  >
-    Talk to Loan Expert
-  </a>
-
-</div>
-  <div className="bg-white rounded-2xl shadow-[0_16px_40px_rgba(9,30,66,0.06)] shadow-sm border border-slate-100 p-5 md:p-6">
-            <h2 className="text-xl font-semibold text-[#10662A] mb-3">
-              Why Choose Rupeedial
-            </h2>
-            <div className="h-1 w-12 bg-[#390A5D] rounded-full mb-4" />
-
-           
+            ))}
           </div>
-          </div>
+          <p className="mt-6 text-center text-[11px] leading-relaxed text-slate-500">
+            Eligibility shown is indicative and based on your inputs and typical lender policies. Final approval, amount, interest rate and disbursal depend on the lender's assessment.
+          </p>
         </section>
       )}
     </main>
   );
 };
 
-export default LoanJourney;
+export default LoanEligibilityPage;

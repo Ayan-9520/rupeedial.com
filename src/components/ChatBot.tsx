@@ -40,6 +40,19 @@ const ChatBot = () => {
           "🏠 Home loans available with attractive interest rates.";
       }
 
+      if (
+        input.toLowerCase().includes("msme") ||
+        input.toLowerCase().includes("business loan")
+      ) {
+        botReply =
+          "🏭 MSME & business loans available — working capital, machinery, CGTMSE & more.";
+      }
+
+      if (input.toLowerCase().includes("working capital")) {
+        botReply =
+          "💼 Working capital (CC/OD) limits available for eligible businesses.";
+      }
+
       if (input.toLowerCase().includes("emi")) {
         botReply =
           "📊 EMI depends on loan amount, tenure and interest rate.";

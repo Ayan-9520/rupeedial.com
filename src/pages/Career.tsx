@@ -1,5 +1,6 @@
 // src/pages/CareerPage.tsx
 import React, { useState, useEffect } from "react";
+import { apiUrl } from "../config/api";
 import jsPDF from "jspdf";
 interface CareerForm {
   name: string;
@@ -128,7 +129,7 @@ formData.append("expectedSalary", form.expectedSalary || "");
 formData.append("source", form.source || "");
 
     const res = await fetch(
-      "https://rupeedial.com/rupeedial-backend/public/index.php?action=career/apply",
+      apiUrl("career/apply"),
       {
         method: "POST",
         body: formData,   // 👈 no headers, browser sets multipart

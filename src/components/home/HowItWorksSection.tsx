@@ -35,15 +35,21 @@ const partnerLogos = [
 
 // ================= PRODUCT OPTIONS =================
 const productOptions = [
-  { label: "MSME Loan", path: "/msme-loan" },
-  { label: "Mudra Loan", path: "/mudra-loan" },
-  { label: "Home Loan", path: "/home-loan" },
-  { label: "Loan Against Property", path: "/lap-loan" },
-  { label: "Personal Loan", path: "/personal-loan" },
-  { label: "Auto Loan", path: "/auto-loan" },
-  { label: "Education Loan", path: "/education-loan" },
-  { label: "Machinery Loan", path: "/machinery-loan" },
-  { label: "Credit Card", path: "/credit-cards" },
+  { label: "MSME Loan" },
+  { label: "Mudra Loan" },
+  { label: "Business Loan" },
+  { label: "Working Capital Loan" },
+  { label: "Startup Business Loan" },
+  { label: "Home Loan" },
+  { label: "Loan Against Property" },
+  { label: "Personal Loan" },
+  { label: "Auto Loan" },
+  { label: "Education Loan" },
+  { label: "Machinery Loan" },
+  { label: "CGTMSE Loan" },
+  { label: "PMEGP Loan" },
+  { label: "Credit Card" },
+  { label: "Insurance" },
 ];
 
 const HowItWorksSection = () => {
@@ -65,25 +71,25 @@ const HowItWorksSection = () => {
   };
 
   return (
-    <section className="w-full bg-green-50 py-">
-      <div className="max-w-7xl mx-auto px-6">
+    <section className="w-full bg-green-50 py-10 md:py-14">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6">
 
-      <h2 className="text-2xl font-bold text-center text-[#10662A] mb-2">
+      <h2 className="text-2xl md:text-3xl font-bold text-center text-[#10662A] mb-2">
   How RupeeDial Works
 </h2>
-<p className="text-lg text-center text-[#390A5D] mb-6">
+<p className="text-base md:text-lg text-center text-[#390A5D] mb-8">
   Check loan eligibility across multiple banks in minutes
 </p>
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-10 text-center">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8 text-center">
 
           {/* ===== STEP 1 : CHOOSE PRODUCT ===== */}
-          <div className="flex flex-col items-center bg-white p-2 rounded-xl shadow-md hover:shadow-lg transition-shadow">
+          <div className="flex flex-col items-center bg-white p-4 md:p-5 rounded-xl shadow-md hover:shadow-lg transition-shadow">
 
            <img
   src={products}
   alt="Choose loan product on RupeeDial platform"
   loading="lazy"
-  className="h-18"
+  className="h-16 w-auto object-contain"
 />
 
             <h3 className="font-semibold text-[#10662A] mt-[-8px]">
@@ -118,7 +124,7 @@ const HowItWorksSection = () => {
     selectedProduct ? "opacity-100" : "opacity-40 pointer-events-none"
   }`}
 >
-            <img src={check} className="h-18 mb-4" />
+            <img src={check} alt="Check loan eligibility" className="h-16 w-auto object-contain mb-4" />
 
             <h3 className="font-semibold text-[#10662A]">
               Check Eligibility
@@ -144,7 +150,7 @@ const HowItWorksSection = () => {
           {/* ===== STEP 3 : UPLOAD DOCUMENTS (INFO ONLY) ===== */}
           <div className="flex flex-col items-center bg-white p-6 rounded-xl shadow-md hover:shadow-lg opacity-50 transition-shadow">
 
-            <img src={udyam} className="h-18 mb-4" />
+            <img src={udyam} alt="Upload documents" className="h-16 w-auto object-contain mb-4" />
 
             <h3 className="font-semibold text-[#10662A]">
               Upload Documents
@@ -158,7 +164,7 @@ const HowItWorksSection = () => {
           {/* ===== STEP 4 : GET DISBURSAL (INFO ONLY) ===== */}
           <div className="flex flex-col items-center bg-white p-6 rounded-xl shadow-md hover:shadow-lg opacity-50 transition-shadow">
 
-            <img src={disbursal} className="h-18 mb-4" />
+            <img src={disbursal} alt="Loan disbursal" className="h-16 w-auto object-contain mb-4" />
 
             <h3 className="font-semibold text-[#10662A]">
               Get Disbursal
@@ -190,54 +196,36 @@ const HowItWorksSection = () => {
   for MSME loans, personal loans, home loans, LAP and Mudra loans across multiple
   banks and NBFCs in India.
 </p>
-       {/* ===== TRUSTED BY STRIP ===== */}
-{/* ===== TRUSTED BY STRIP (SINGLE LINE) ===== */}
-{/* ===== TRUSTED BY STRIP ===== */}
-{/* ===== TRUSTED BY STRIP (AUTO SLIDER) ===== */}
-<section className="bg-green-100 py-4 overflow-hidden">
-  <div className="max-w-7xl mx-auto px-6">
-
-    <div className="relative w-full overflow-hidden">
-      <div className="flex animate-marquee gap-12 w-max items-center">
-
-        {/* First full set (Text + Logos) */}
-        <p className="text-xl font-bold text-[#10662A] whitespace-nowrap shrink-0">
-          Trusted by 50+ Bank & NBFC Partners
-        </p>
-
-        {partnerLogos.map((logo, index) => (
-          <img
-            key={index}
-            src={logo.src}
-            alt={logo.alt}
-            className="h-12 object-contain shrink-0"
-          />
-        ))}
-
-        {/* Duplicate full set for infinite scroll */}
-        <p className="text-xl font-bold text-[#10662A] whitespace-nowrap shrink-0">
-          Trusted by 50+ Bank & NBFC Partners
-        </p>
-
-        {partnerLogos.map((logo, index) => (
-          <img
-            key={`dup-${index}`}
-            src={logo.src}
-            alt={logo.alt}
-            className="h-10 object-contain shrink-0"
-          />
-        ))}
-
+      <div className="mt-10 bg-green-100 py-4 overflow-hidden rounded-xl">
+        <div className="relative w-full overflow-hidden">
+          <div className="flex animate-marquee gap-10 md:gap-12 w-max items-center px-4">
+            <p className="text-lg md:text-xl font-bold text-[#10662A] whitespace-nowrap shrink-0">
+              Trusted by 50+ Bank & NBFC Partners
+            </p>
+            {partnerLogos.map((logo, index) => (
+              <img
+                key={index}
+                src={logo.src}
+                alt={logo.alt}
+                className="h-10 md:h-12 object-contain shrink-0"
+              />
+            ))}
+            <p className="text-lg md:text-xl font-bold text-[#10662A] whitespace-nowrap shrink-0">
+              Trusted by 50+ Bank & NBFC Partners
+            </p>
+            {partnerLogos.map((logo, index) => (
+              <img
+                key={`dup-${index}`}
+                src={logo.src}
+                alt={logo.alt}
+                className="h-10 md:h-12 object-contain shrink-0"
+              />
+            ))}
+          </div>
+        </div>
       </div>
-    </div>
-
-  </div>
-</section>
-
-
 
     </section>
-     
   );
 };
 

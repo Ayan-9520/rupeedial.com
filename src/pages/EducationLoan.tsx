@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { apiUrl } from "../config/api";
 import {
   GraduationCap,
   Globe,
@@ -108,7 +109,7 @@ const [submitting, setSubmitting] = useState(false);
 
   try {
     const res = await fetch(
-      "https://rupeedial.com/rupeedial-backend/public/index.php?action=education-loan/apply",
+      apiUrl("education-loan/apply"),
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },

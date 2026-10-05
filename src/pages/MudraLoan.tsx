@@ -1,7 +1,6 @@
 // src/pages/Msme.tsx
 import React, { useState, useMemo, useEffect } from "react";
-
-
+import { apiUrl } from "../config/api";
 import MudraLoan from "../assets/images/mudra-loan.png";
 type MudraCategory = "shishu" | "kishore" | "tarun";
  const MUDRA_LIMITS: Record<MudraCategory, number> = {
@@ -286,7 +285,7 @@ const handleFinalSubmit = async () => {
 
   try {
     const res = await fetch(
-      "https://rupeedial.com/rupeedial-backend/public/index.php?action=mudra-loan/apply",
+      apiUrl("mudra-loan/apply"),
       {
         method: "POST",
         headers: {

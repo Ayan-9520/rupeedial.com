@@ -6,28 +6,23 @@ import HowItWorksSection from "../components/home/HowItWorksSection";
 import LoanProductsSlider from "../components/home/LoanProductsSlider";
 import HomeBottomSection from "../components/home/HomeBottomSection";
 
-const HomeContent = () => {
-
+const Home = () => {
   useEffect(() => {
-    // TITLE
     document.title =
-      "RupeeDial";
+      "RupeeDial | Financial Marketplace & Distribution Network";
 
-    // META DESCRIPTION
-    const metaDesc = document.querySelector(
-      "meta[name='description']"
-    ) || document.createElement("meta");
-
-    metaDesc.setAttribute("name", "description");
-    metaDesc.setAttribute(
+    let meta = document.querySelector('meta[name="description"]');
+    if (!meta) {
+      meta = document.createElement("meta");
+      meta.setAttribute("name", "description");
+      document.head.appendChild(meta);
+    }
+    meta.setAttribute(
       "content",
-      "Compare and apply for MSME, personal, home and business loans in India. Check eligibility online across top banks & NBFCs with RupeeDial."
+      "Compare loans across 50+ lenders, get expert assistance, or grow as a RupeeDial financial partner. MSME, home, personal and business finance. No advance fees."
     );
 
-    document.head.appendChild(metaDesc);
-
-    // CANONICAL
-    let canonical = document.querySelector("link[rel='canonical']");
+    let canonical = document.querySelector('link[rel="canonical"]');
     if (!canonical) {
       canonical = document.createElement("link");
       canonical.setAttribute("rel", "canonical");
@@ -37,11 +32,9 @@ const HomeContent = () => {
   }, []);
 
   return (
-    <main className="bg-white">
+    <main className="bg-white overflow-x-hidden max-w-[100vw]">
       <HomeTopSection />
-      
       <HowItWorksSection />
-      
       <LoanProductsSlider />
       <WhyTrustRupeeDial />
       <HomeBottomSection />
@@ -49,4 +42,4 @@ const HomeContent = () => {
   );
 };
 
-export default HomeContent;
+export default Home;

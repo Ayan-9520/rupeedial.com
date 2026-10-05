@@ -1,6 +1,7 @@
 // src/pages/ExpertPage.tsx
 import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import { EXPERT_API_BASE } from "../config/api";
 const serviceRouteMap: Record<string, string> = {
   "personal-loan": "/personal-loan",
   "business-loan": "/business-loan",
@@ -10,6 +11,21 @@ const serviceRouteMap: Record<string, string> = {
   "car-loan": "/auto-loan",
   "credit-cards": "/credit-cards",
   "lap": "/lap-loan",
+  "machinery-loan": "/machinery-loan",
+  "education-loan": "/education-loan",
+  "insurance": "/insurance",
+  "working-capital-loan": "/working-capital-loan",
+  "startup-business-loan": "/startup-business-loan",
+  "cgtmse-loan": "/cgtmse-loan",
+  "pmegp-loan": "/pmegp-loan",
+  "standup-india": "/standup-india",
+  "subsidy-linked-msme": "/subsidy-linked-msme",
+  "export-finance": "/export-finance",
+  "import-finance": "/import-finance",
+  "lc-bg": "/lc-bg",
+  "invoice-financing": "/invoice-financing",
+  "cash-credit": "/cash-credit",
+  "overdraft": "/overdraft",
 };
 
 type LoanCategory =
@@ -61,7 +77,7 @@ interface Lead {
 /* === SET YOUR PRODUCTION API BASE ===
    Keep this value — backend already hosted on Hostinger as discussed:
 */
-const API_BASE = "https://rupeedial.com/rupeedial-backend/api";
+const API_BASE = EXPERT_API_BASE;
 
 const categoryLabels: Record<LoanCategory, string> = {
   all: "All Loan Types",
@@ -78,9 +94,9 @@ const serviceNav: { label: string; key: LoanCategory; slug?: string }[] = [
   { label: "MSME Loan", key: "msme", slug: "msme-loan" },
   { label: "Mudra Loan", key: "business", slug: "mudra-loan" },
   { label: "Home Loan", key: "home", slug: "home-loan" },
-  { label: "Loan Against Property", key: "lap", slug: "lap" },
+  { label: "Loan Against Property", key: "lap", slug: "lap-loan" },
   { label: "Personal Loan", key: "personal", slug: "personal-loan" },
-  { label: "Auto Loan", key: "car", slug: "car-loan" },
+  { label: "Auto Loan", key: "car", slug: "auto-loan" },
   { label: "Credit Cards", key: "credit-card", slug: "credit-cards" },
 ];
 

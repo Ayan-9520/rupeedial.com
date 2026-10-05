@@ -1,4 +1,6 @@
 import React, { useMemo, useState, useEffect } from "react";
+import { apiUrl } from "../config/api";
+import { CRM_API_URL } from "../data/partnerPlans";
 import personalLoan from "../assets/images/personal-loan.png";
 
 type Step = 1 | 2 | 3 | 4;
@@ -67,6 +69,14 @@ const calculateEmi = (
   if (r === 0) return principal / tenureMonths;
   const pow = Math.pow(r + 1, tenureMonths);
   return (principal * r * pow) / (pow - 1);
+};
+
+const principalForEmi = (emi: number, annualRate = 13, tenureMonths = 60): number => {
+  if (!emi || emi <= 0) return 0;
+  const r = annualRate / 12 / 100;
+  const pow = Math.pow(1 + r, tenureMonths);
+  const principal = (emi * (pow - 1)) / (r * pow);
+  return Math.floor(principal / 1000) * 1000;
 };
 
 const offers: Offer[] = [
@@ -345,8 +355,12 @@ const selectedEmi = primaryBank
   const [leadId, setLeadId] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  // NEW: decline info
-  const [declineInfo, setDeclineInfo] = useState<string | null>(null);
+  const [foirGuide, setFoirGuide] = useState<{
+    foir: number;
+    totalEmi: number;
+    income: number;
+    suggested: number;
+  } | null>(null);
 
   const progressWidth = useMemo(() => `${(step / 4) * 100}%`, [step]);
   const filteredOffers = useMemo(() => {
@@ -587,59 +601,11 @@ if (form.aadhaar && !aadhaarRegex.test(form.aadhaar)) {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleCheckEligibility = () => {
-    // reset old decline message
-    setDeclineInfo(null);
-
-    const isValid = validateStep1();
-
-    const loanAmountNum = Number(form.loanAmount || 0);
+  const openOffers = (loanAmountNum: number) => {
     const calcIncome = Number(form.calcMonthlyIncome || 0);
     const formIncome = Number(form.formMonthlyIncome || 0);
     const existingEmiNum = Number(form.existingEmi || 0);
-
-    if (!isValid) {
-      const amount = loanAmountNum;
-      if (amount > maxLoan && maxLoan > 0) {
-        alert(
-          `Based on your entered net monthly income, your approximate personal loan eligibility is around ₹${maxLoan.toLocaleString(
-            "en-IN"
-          )}.\n\nYou have entered a higher loan amount of ₹${amount.toLocaleString(
-            "en-IN"
-          )}.\n\nPlease reduce the loan amount within your indicative eligibility and try again.`
-        );
-      } else {
-        alert("Please fill all required fields correctly.");
-      }
-      return;
-    }
-
-    // --- NEW: decline logic using FOIR ---
-    const approxEmi = Math.round(calculateEmi(loanAmountNum, 13, 60)); // 5 yrs, 13% approx
-    const totalEmi = approxEmi + existingEmiNum;
-    let foirVal = 0;
-    if (formIncome > 0) {
-      foirVal = (totalEmi / formIncome) * 100;
-    }
-
-    // FOIR > 65% => decline
-    if (foirVal > 65) {
-      const msg = `Based on your monthly income (₹${formIncome.toLocaleString(
-        "en-IN"
-      )}) and total EMIs (existing + new ≈ ₹${totalEmi.toLocaleString(
-        "en-IN"
-      )}), your FOIR is around ${foirVal
-        .toFixed(1)
-        .toString()}%, which is higher than the usual bank limit (≈ 60–65%).\n\nIs profile par loan approval chances kaafi kam hain, isliye application decline ho sakti hai. Please reduce loan amount or existing EMIs and try again.`;
-      setDeclineInfo(msg);
-      alert(
-        "Based on your income & EMIs, loan eligibility is low. Please see decline reason below."
-      );
-      return;
-    }
-
-    // if passes, proceed as earlier
-const details: LoanDetails = {
+    const details: LoanDetails = {
   loanType: form.loanType,
   fullName: form.fullName.trim(),
   motherName: form.motherName || "",
@@ -668,6 +634,35 @@ const details: LoanDetails = {
     setTimeout(() => {
       setLoadingEligibility(false);
     }, 1500);
+  };
+
+  const handleCheckEligibility = () => {
+    setFoirGuide(null);
+
+    const isValid = validateStep1();
+    const loanAmountNum = Number(form.loanAmount || 0);
+    const formIncome = Number(form.formMonthlyIncome || 0);
+    const existingEmiNum = Number(form.existingEmi || 0);
+
+    if (!isValid) return;
+
+    const approxEmi = Math.round(calculateEmi(loanAmountNum, 13, 60));
+    const totalEmi = approxEmi + existingEmiNum;
+    const foirVal = formIncome > 0 ? (totalEmi / formIncome) * 100 : 0;
+    const room = Math.max(0, formIncome * 0.6 - existingEmiNum);
+    const suggested = principalForEmi(room);
+
+    if (foirVal > 65) {
+      setFoirGuide({
+        foir: foirVal,
+        totalEmi,
+        income: formIncome,
+        suggested,
+      });
+      return;
+    }
+
+    openOffers(loanAmountNum);
   };
 
   const handlePrev = () => {
@@ -740,6 +735,36 @@ if (!loanDetails.officialEmail?.trim()) {
       return;
     }
        setSubmitting(true);
+
+      if (import.meta.env.DEV) {
+        const key =
+          (import.meta.env.VITE_CRM_PUBLIC_API_KEY as string | undefined) ||
+          "rupeedial-website-key-change-me";
+        const res = await fetch(`${CRM_API_URL}/api/public/product-loan`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "X-API-Key": key },
+          body: JSON.stringify({
+            full_name: loanDetails.fullName,
+            mobile: loanDetails.mobile,
+            email: loanDetails.email,
+            city: loanDetails.city,
+            product: loanDetails.loanType || "Personal Loan",
+            loan_amount: loanDetails.loanAmount,
+            monthly_income: loanDetails.formMonthlyIncome,
+            employment: loanDetails.employmentType,
+            bank_preference: selectedBanks.map((bank) => bank.bankName).join(", "),
+          }),
+        });
+        const data = await res.json().catch(() => null);
+        if (!res.ok || data?.success !== true) {
+          throw new Error(typeof data?.detail === "string" ? data.detail : "Could not save the application");
+        }
+        setLeadId(data.reference_id);
+        setStep(4);
+        window.scrollTo({ top: 0, behavior: "smooth" });
+        return;
+      }
+
       formData.append("loanDetails", JSON.stringify(loanDetails));
 
       formData.append(
@@ -765,7 +790,7 @@ if (!loanDetails.officialEmail?.trim()) {
       uploaded.bankStatement.forEach((file) => formData.append("bankStatement[]", file));
       uploaded.other.forEach((file) => formData.append("other[]", file));
 
-      const res = await fetch("https://rupeedial.com/rupeedial-backend/public/index.php?action=personal-loan/apply",
+      const res = await fetch(apiUrl("personal-loan/apply"),
         {
           method: "POST",
           body: formData,
@@ -1466,12 +1491,40 @@ We will assist you throughout your loan journey!
                   </div>
 
                   {/* NEW: Decline reason block */}
-                  {declineInfo && (
-                    <div className="mt-4 rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-xs text-red-800">
+                  {foirGuide && (
+                    <div className="mt-4 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-xs text-amber-950">
                       <h3 className="mb-1 text-sm font-semibold">
-                        Application May Be Declined
+                        This amount is above the usual income limit
                       </h3>
-                      <p className="whitespace-pre-line">{declineInfo}</p>
+                      <p>
+                        Income ₹{foirGuide.income.toLocaleString("en-IN")} and total EMI about ₹{foirGuide.totalEmi.toLocaleString("en-IN")} puts the obligation near {foirGuide.foir.toFixed(1)}%. Banks often look for 60–65%. This page does not decline the loan.
+                      </p>
+                      <p className="mt-1">
+                        {foirGuide.suggested > 0
+                          ? `A 5-year estimate that fits near 60% is about ₹${foirGuide.suggested.toLocaleString("en-IN")}.`
+                          : "Existing EMIs already use most of this income. A specialist can still review the case."}
+                      </p>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {foirGuide.suggested > 0 && (
+                          <button
+                            type="button"
+                            className={outlineBtnClass}
+                            onClick={() => {
+                              setFormValue("loanAmount", String(foirGuide.suggested));
+                              setFoirGuide(null);
+                            }}
+                          >
+                            Use ₹{foirGuide.suggested.toLocaleString("en-IN")}
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          className={primaryBtnClass}
+                          onClick={() => openOffers(Number(form.loanAmount || 0))}
+                        >
+                          Continue with a specialist
+                        </button>
+                      </div>
                     </div>
                   )}
 
@@ -2383,24 +2436,24 @@ className={getInputClass("officialEmail")}
                       <span className="font-semibold text-emerald-700">
                         {loanDetails.loanType}
                       </span>{" "}
-                      has been shared securely with
+                      is saved with RupeeDial. Reference {leadId || "pending"}.
                     </span>
 
                     <div className="mt-2 space-y-1">
                       {selectedBanks.map((bank) => (
-                        <div key={bank.id} className="flex justify-between text-sm">
+                        <div key={bank.id} className="flex justify-between gap-3 text-sm">
                           <span className="font-medium text-emerald-700">
                             {bank.bankName}
                           </span>
                           <span>
-                            ₹ {bank.emi.toLocaleString("en-IN")} @ {bank.interestRate}%
+                            Rs {Math.round(calculateEmi(loanDetails.loanAmount, bank.interestRate, 60)).toLocaleString("en-IN")} @ {bank.interestRate}% indicative
                           </span>
                         </div>
                       ))}
                     </div>
 
                     <div className="mt-2">
-                      The bank will contact you directly for verification.
+                      A RupeeDial specialist will call you. This form does not send the file to the bank.
                     </div>
                   </div>
 
@@ -2412,12 +2465,10 @@ className={getInputClass("officialEmail")}
                       </h3>
                       <ul className="list-disc space-y-1 pl-5">
                         <li>
-                          The bank will review your profile and documents within
-                          24–48 working hours.
+                          RupeeDial will review this application. Refresh the CRM leadboard to see the new card.
                         </li>
                         <li>
-                          You may receive a verification call / SMS / email from
-                          the bank or Rupeedial team.
+                          You may receive a call from the RupeeDial team. The bank is contacted only after that review.
                         </li>
                         <li>
                           Post verification, the final loan amount, interest
@@ -2455,7 +2506,7 @@ className={getInputClass("officialEmail")}
                               <div key={bank.id} className="flex justify-between">
                                 <span className="font-medium">{bank.bankName}</span>
                                 <span>
-                                  ₹ {bank.emi.toLocaleString("en-IN")} @ {bank.interestRate}%
+                                  Rs {Math.round(calculateEmi(loanDetails.loanAmount, bank.interestRate, 60)).toLocaleString("en-IN")} @ {bank.interestRate}%
                                 </span>
                               </div>
                             ))}

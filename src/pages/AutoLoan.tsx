@@ -1,4 +1,5 @@
 import React, { useMemo, useState, useEffect } from "react";
+import { apiUrl } from "../config/api";
 import {
   Car,
   CreditCard,
@@ -760,7 +761,7 @@ setSubmitting(true);
       uploaded.other.forEach((file) => formData.append("other[]", file));
 
       const res = await fetch(
-        "https://rupeedial.com/rupeedial-backend/public/index.php?action=auto-loan/apply",
+        apiUrl("auto-loan/apply"),
         {
           method: "POST",
           body: formData,
